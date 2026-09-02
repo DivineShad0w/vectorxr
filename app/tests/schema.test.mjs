@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
-import { createFrameGenProfile, createPivotQuickView, createTurboProfile, defaultConfig, defaultFrameGenSettings, normalizeToggleBindings, savedOsdRowOrder } from '../src/lib/model.ts'
+import { createFrameGenProfile, createHeadCursorProfile, createPivotQuickView, createTurboProfile, defaultConfig, defaultFrameGenSettings, defaultHeadCursorConfig, normalizeToggleBindings, savedOsdRowOrder } from '../src/lib/model.ts'
 
 const schema = JSON.parse(readFileSync(new URL('../../config/vectorxr.schema.json', import.meta.url), 'utf8'))
 
@@ -50,6 +50,29 @@ test('schema describes generated Frame Generation settings and keeps the module 
   assert.equal(osd.compactShowFramegen.default, false)
   assert.equal(osd.showFramegenFps.default, true)
   assert.equal(osd.customPresets.items.properties.settings.properties.showFramegenFps.default, true)
+})
+
+test('schema describes generated Head Cursor settings and keeps the module optional', () => {
+  const headCursor = defaultConfig().modules.headCursor
+  assertSchemaDescribesObject(schema.$defs.headCursorModule, headCursor)
+  assertSchemaDescribesObject(schema.$defs.headCursorSettings, headCursor.defaults)
+  assertSchemaDescribesObject(schema.$defs.headCursorProfile, createHeadCursorProfile(defaultHeadCursorConfig(), ['msfs2024']))
+  assert.equal(schema.$defs.modules.properties.headCursor.$ref, '#/$defs/headCursorModule')
+  assert.ok(!schema.$defs.modules.required.includes('headCursor'))
+
+  const settings = schema.$defs.headCursorSettings.properties
+  for (const [key, value] of Object.entries(headCursor.defaults)) {
+    if (key === 'toggleBinding') continue
+    assert.deepEqual(settings[key].default, value, key)
+  }
+  assert.deepEqual([settings.yawSensitivity.minimum, settings.yawSensitivity.maximum], [0.1, 5])
+  assert.deepEqual([settings.pitchSensitivity.minimum, settings.pitchSensitivity.maximum], [0.1, 5])
+  assert.deepEqual([settings.yawMultiplier.minimum, settings.yawMultiplier.maximum], [0.5, 10])
+  assert.deepEqual([settings.pitchMultiplier.minimum, settings.pitchMultiplier.maximum], [0.5, 10])
+  assert.deepEqual([settings.deadzoneDegrees.minimum, settings.deadzoneDegrees.maximum], [0, 5])
+  assert.deepEqual([settings.maxMovePerFrame.minimum, settings.maxMovePerFrame.maximum], [50, 500])
+  assert.equal(settings.maxMovePerFrame.type, 'integer')
+  assert.equal(settings.toggleBinding.$ref, '#/$defs/inputBinding')
 })
 
 function assertSchemaDescribesObject(definition, value) {
