@@ -18,7 +18,8 @@
     "pivotxr": "Pivot",
     "quadviews": "Quadviews",
     "turbo": "Turbo",
-    "framegen": "Frame Generation"
+    "framegen": "Frame Generation",
+    "headCursor": "Head Cursor"
   },
   "defaults": {
     "newProfile": "New Profile",

@@ -41,6 +41,10 @@
       "label": "Frame Generation",
       "subtitle": "Mouvement plus fluide grâce aux images générées"
     },
+    "headCursor": {
+      "label": "Head Cursor",
+      "subtitle": "Contrôler le curseur de la souris en bougeant la tête"
+    },
     "pivotxr": {
       "label": "Pivot",
       "subtitle": "Réglage de la rotation - surveillez vos six heures !"

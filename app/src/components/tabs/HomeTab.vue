@@ -83,13 +83,13 @@ const systemHealthDescription = computed(() => {
   return t('home.systemHealth.ready')
 })
 
-const moduleOrder: ModuleId[] = ['quadviews', 'turbo', 'framegen', 'pivotxr', 'depthxr']
+const moduleOrder: ModuleId[] = ['quadviews', 'turbo', 'framegen', 'pivotxr', 'depthxr', 'headCursor']
 
 const enhancementRows = computed(() =>
   moduleOrder.map((id) => {
     const module = props.config.modules[id]
     const totalCustom = module.profiles.length
-    const enabledCustom = module.profiles.filter((profile) => profile.enabled).length
+    const enabledCustom = module.profiles.filter((profile: any) => profile.enabled).length
     return {
       id,
       label: t(`app.tabs.${id}.label`),

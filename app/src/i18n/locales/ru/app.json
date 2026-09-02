@@ -43,6 +43,10 @@
       "label": "Frame Generation",
       "subtitle": "Более плавное движение за счёт генерируемых кадров"
     },
+    "headCursor": {
+      "label": "Head Cursor",
+      "subtitle": "Управление курсором мыши движением головы"
+    },
     "pivotxr": {
       "label": "Pivot",
       "subtitle": "Настройка поворота — следите за хвостом!"

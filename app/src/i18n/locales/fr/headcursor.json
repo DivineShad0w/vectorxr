@@ -1,0 +1,40 @@
+{
+  "tab": {
+    "intro": "Contrôlez le curseur de la souris en bougeant la tête. Utile pour naviguer dans les menus et interagir avec l'interface en jeu sans avoir à attraper le contrôleur.",
+    "defaultProfile": "Profil par défaut",
+    "defaultSummary": "S'applique aux applications sans profil personnalisé. Réglez la sensibilité et la zone morte selon vos préférences.",
+    "enableHeading": "Activer Head Cursor",
+    "enabledHint": "Head Cursor s'applique aux applications sans profil personnalisé.",
+    "disabledHint": "Head Cursor reste désactivé, sauf si un profil personnalisé activé l'active.",
+    "profilesHeading": "Profils personnalisés",
+    "profilesSummary": "Paramètres par application pour Head Cursor.",
+    "addProfile": "Ajouter un profil",
+    "broadEnablementLead": "L'activation globale est active.",
+    "broadEnablementBody": "Head Cursor s'applique aux applications sans profil personnalisé, y compris celles que vous n'avez pas validées. La configuration la plus sûre est Désactivé par défaut, avec cette liste utilisée comme liste d'applications autorisées.",
+    "emptyProfiles": "Aucun profil personnalisé pour l'instant. Ajoutez-en un lorsqu'une application a besoin de réglages Head Cursor différents de ceux du profil par défaut.",
+    "binding": {
+      "label": "Affectation de bascule",
+      "description": "Appuyez sur la commande affectée pour désactiver temporairement Head Cursor. Appuyez à nouveau pour le réactiver.",
+      "noneText": "Aucune affectation. Head Cursor reste actif tant que vous n'affectez pas de commande de bascule."
+    },
+    "inverted": {
+      "label": "Bascule inversée",
+      "onHint": "L'affectation active Head Cursor (désactivé par défaut, appuyez pour activer).",
+      "offHint": "L'affectation désactive Head Cursor (activé par défaut, appuyez pour suspendre)."
+    }
+  },
+  "fields": {
+    "yawSensitivity": "Sensibilité du lacet",
+    "yawSensitivityHint": "À quelle vitesse le mouvement horizontal de la tête se traduit en vitesse du curseur.",
+    "pitchSensitivity": "Sensibilité du tangage",
+    "pitchSensitivityHint": "À quelle vitesse le mouvement vertical de la tête se traduit en vitesse du curseur.",
+    "yawMultiplier": "Multiplicateur de lacet",
+    "yawMultiplierHint": "Facteur d'échelle du déplacement horizontal du curseur.",
+    "pitchMultiplier": "Multiplicateur de tangage",
+    "pitchMultiplierHint": "Facteur d'échelle du déplacement vertical du curseur.",
+    "deadzone": "Zone morte (degrés)",
+    "deadzoneHint": "Mouvement minimal de la tête avant que le curseur ne commence à bouger. Des valeurs plus élevées réduisent les tremblements.",
+    "maxMovePerFrame": "Mouvement max. par image",
+    "maxMovePerFrameHint": "Déplacement maximal du curseur par image pour éviter les dépassements."
+  }
+}

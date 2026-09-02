@@ -1,0 +1,40 @@
+{
+  "tab": {
+    "intro": "Steuern Sie den Mauszeiger mit Kopfbewegungen. Nützlich für die Menünavigation und die Interaktion mit der Oberfläche im Spiel, ohne zum Controller greifen zu müssen.",
+    "defaultProfile": "Standardprofil",
+    "defaultSummary": "Gilt für Anwendungen ohne eigenes Profil. Stimmen Sie Empfindlichkeit und Totzone nach Ihren Wünschen ab.",
+    "enableHeading": "Head Cursor aktivieren",
+    "enabledHint": "Head Cursor gilt für Anwendungen ohne eigenes Profil.",
+    "disabledHint": "Head Cursor bleibt ausgeschaltet, sofern es nicht durch ein aktiviertes eigenes Profil eingeschaltet wird.",
+    "profilesHeading": "Eigene Profile",
+    "profilesSummary": "Anwendungsspezifische Einstellungen für Head Cursor.",
+    "addProfile": "Profil hinzufügen",
+    "broadEnablementLead": "Die allgemeine Aktivierung ist aktiv.",
+    "broadEnablementBody": "Head Cursor gilt für Anwendungen ohne eigenes Profil, auch für solche, die Sie nicht überprüft haben. Sicherer ist „Standard aus“, wobei diese Liste als Positivliste für Anwendungen dient.",
+    "emptyProfiles": "Noch keine eigenen Profile. Fügen Sie eines hinzu, wenn eine Anwendung andere Einstellungen für Head Cursor als den Standard benötigt.",
+    "binding": {
+      "label": "Belegung zum Umschalten",
+      "description": "Drücken Sie die zugewiesene Steuerung, um Head Cursor vorübergehend auszuschalten. Erneut drücken, um ihn wieder einzuschalten.",
+      "noneText": "Keine Belegung zugewiesen. Head Cursor bleibt aktiv, sofern Sie keine Steuerung zum Umschalten zugewiesen haben."
+    },
+    "inverted": {
+      "label": "Invertierte Umschaltung",
+      "onHint": "Die Belegung aktiviert Head Cursor (standardmäßig deaktiviert, drücken zum Aktivieren).",
+      "offHint": "Die Belegung deaktiviert Head Cursor (standardmäßig aktiviert, drücken zum Anhalten)."
+    }
+  },
+  "fields": {
+    "yawSensitivity": "Gier-Empfindlichkeit",
+    "yawSensitivityHint": "Wie schnell sich horizontale Kopfbewegung in Zeigergeschwindigkeit umsetzt.",
+    "pitchSensitivity": "Nick-Empfindlichkeit",
+    "pitchSensitivityHint": "Wie schnell sich vertikale Kopfbewegung in Zeigergeschwindigkeit umsetzt.",
+    "yawMultiplier": "Gier-Multiplikator",
+    "yawMultiplierHint": "Skalierungsfaktor für die horizontale Zeigerverschiebung.",
+    "pitchMultiplier": "Nick-Multiplikator",
+    "pitchMultiplierHint": "Skalierungsfaktor für die vertikale Zeigerverschiebung.",
+    "deadzone": "Totzone (Grad)",
+    "deadzoneHint": "Mindestbewegung des Kopfes, bevor sich der Zeiger bewegt. Höhere Werte verringern Zittern.",
+    "maxMovePerFrame": "Max. Bewegung pro Bild",
+    "maxMovePerFrameHint": "Maximale Zeigerverschiebung pro Bild, um Überschießen zu verhindern."
+  }
+}

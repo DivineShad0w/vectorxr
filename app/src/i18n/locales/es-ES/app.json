@@ -41,6 +41,10 @@
       "label": "Frame Generation",
       "subtitle": "Movimiento más fluido con fotogramas generados"
     },
+    "headCursor": {
+      "label": "Head Cursor",
+      "subtitle": "Controla el cursor del ratón al mover la cabeza"
+    },
     "pivotxr": {
       "label": "Pivot",
       "subtitle": "Ajuste de la rotación: ¡vigila tus seis!"

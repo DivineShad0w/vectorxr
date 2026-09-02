@@ -40,6 +40,10 @@
       "label": "Frame Generation",
       "subtitle": "以生成影格帶來更流暢的動態"
     },
+    "headCursor": {
+      "label": "Head Cursor",
+      "subtitle": "用頭部移動控制滑鼠指標"
+    },
     "pivotxr": {
       "label": "Pivot",
       "subtitle": "旋轉調校：留意您的六點鐘方向！"

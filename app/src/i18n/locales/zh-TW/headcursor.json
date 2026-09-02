@@ -1,0 +1,40 @@
+{
+  "tab": {
+    "intro": "用頭部移動控制滑鼠指標。不必伸手去拿控制器就能瀏覽選單與操作遊戲內 UI。",
+    "defaultProfile": "預設設定檔",
+    "defaultSummary": "套用到沒有自訂設定檔的應用程式。請依您的習慣調整靈敏度與死區。",
+    "enableHeading": "啟用 Head Cursor",
+    "enabledHint": "Head Cursor 會套用到沒有自訂設定檔的應用程式。",
+    "disabledHint": "Head Cursor 會保持關閉，除非有啟用中的自訂設定檔將它開啟。",
+    "profilesHeading": "自訂設定檔",
+    "profilesSummary": "各應用程式的 Head Cursor 設定。",
+    "addProfile": "新增設定檔",
+    "broadEnablementLead": "已開啟大範圍啟用。",
+    "broadEnablementBody": "Head Cursor 會套用到沒有自訂設定檔的應用程式，包含您尚未驗證過的程式。較安全的做法是讓預設保持關閉，並將這份清單作為允許的應用程式清單使用。",
+    "emptyProfiles": "還沒有自訂設定檔。當某個應用程式需要不同於預設的 Head Cursor 設定時，請新增一個。",
+    "binding": {
+      "label": "切換繫結",
+      "description": "按下指定的按鍵可暫時關閉 Head Cursor，再按一次重新啟用。",
+      "noneText": "尚未指定繫結。除非您指定切換按鍵，否則 Head Cursor 會保持啟用。"
+    },
+    "inverted": {
+      "label": "反向切換",
+      "onHint": "繫結會啟用 Head Cursor（預設關閉，按壓後啟用）。",
+      "offHint": "繫結會關閉 Head Cursor（預設開啟，按壓後暫停）。"
+    }
+  },
+  "fields": {
+    "yawSensitivity": "偏擺靈敏度",
+    "yawSensitivityHint": "頭部水平移動轉換為指標速度的快慢。",
+    "pitchSensitivity": "俯仰靈敏度",
+    "pitchSensitivityHint": "頭部垂直移動轉換為指標速度的快慢。",
+    "yawMultiplier": "偏擺倍率",
+    "yawMultiplierHint": "指標水平位移的倍率。",
+    "pitchMultiplier": "俯仰倍率",
+    "pitchMultiplierHint": "指標垂直位移的倍率。",
+    "deadzone": "死區（度）",
+    "deadzoneHint": "指標開始移動前會被忽略的最小頭部移動。數值越高，抖動越少。",
+    "maxMovePerFrame": "每影格最大移動",
+    "maxMovePerFrameHint": "每影格指標移動的最大距離，以避免移過頭。"
+  }
+}

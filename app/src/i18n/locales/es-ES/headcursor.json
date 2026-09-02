@@ -1,0 +1,40 @@
+{
+  "tab": {
+    "intro": "Controla el cursor del ratón con movimientos de la cabeza. Útil para navegar por menús e interactuar con la interfaz dentro del juego sin tener que coger el mando.",
+    "defaultProfile": "Perfil predeterminado",
+    "defaultSummary": "Se aplica a las aplicaciones sin un perfil personalizado. Ajusta la sensibilidad y la zona muerta a tu gusto.",
+    "enableHeading": "Activar Head Cursor",
+    "enabledHint": "Head Cursor se aplica a las aplicaciones sin perfil personalizado.",
+    "disabledHint": "Head Cursor sigue desactivado salvo que lo active un perfil personalizado activado.",
+    "profilesHeading": "Perfiles personalizados",
+    "profilesSummary": "Configuración de Head Cursor por aplicación.",
+    "addProfile": "Agregar perfil",
+    "broadEnablementLead": "La activación general está activa.",
+    "broadEnablementBody": "Head Cursor se aplica a las aplicaciones sin perfil personalizado, incluidas las que no has validado. Lo más seguro es Predeterminado desactivado y usar esta lista como lista de aplicaciones permitidas.",
+    "emptyProfiles": "Todavía no hay perfiles personalizados. Agrega uno cuando una aplicación necesite ajustes de Head Cursor distintos del predeterminado.",
+    "binding": {
+      "label": "Asignación del conmutador",
+      "description": "Pulsa el control asignado para desactivar Head Cursor temporalmente. Vuelve a pulsar para reactivarlo.",
+      "noneText": "No hay ninguna asignación. Head Cursor sigue activo salvo que asignes un control de conmutación."
+    },
+    "inverted": {
+      "label": "Conmutador invertido",
+      "onHint": "La asignación activa Head Cursor (desactivado de forma predeterminada, pulsa para activarlo).",
+      "offHint": "La asignación desactiva Head Cursor (activado de forma predeterminada, pulsa para suspenderlo)."
+    }
+  },
+  "fields": {
+    "yawSensitivity": "Sensibilidad de la guiñada",
+    "yawSensitivityHint": "La velocidad a la que el movimiento horizontal de la cabeza se convierte en velocidad del cursor.",
+    "pitchSensitivity": "Sensibilidad del cabeceo",
+    "pitchSensitivityHint": "La velocidad a la que el movimiento vertical de la cabeza se convierte en velocidad del cursor.",
+    "yawMultiplier": "Multiplicador de guiñada",
+    "yawMultiplierHint": "Factor de escala del desplazamiento horizontal del cursor.",
+    "pitchMultiplier": "Multiplicador de cabeceo",
+    "pitchMultiplierHint": "Factor de escala del desplazamiento vertical del cursor.",
+    "deadzone": "Zona muerta (grados)",
+    "deadzoneHint": "Movimiento mínimo de la cabeza antes de que el cursor empiece a moverse. Valores más altos reducen la vibración.",
+    "maxMovePerFrame": "Movimiento máximo por fotograma",
+    "maxMovePerFrameHint": "Desplazamiento máximo del cursor por fotograma para evitar sobrepasar el objetivo."
+  }
+}

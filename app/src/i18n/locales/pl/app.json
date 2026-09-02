@@ -43,6 +43,10 @@
       "label": "Frame Generation",
       "subtitle": "Płynniejszy ruch dzięki generowanym klatkom"
     },
+    "headCursor": {
+      "label": "Head Cursor",
+      "subtitle": "Sterowanie kursorem myszy za pomocą ruchów głowy"
+    },
     "pivotxr": {
       "label": "Pivot",
       "subtitle": "Dostrajanie obrotu — pilnuj swojego ogona!"

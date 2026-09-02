@@ -1,0 +1,40 @@
+{
+  "tab": {
+    "intro": "머리 움직임으로 마우스 커서를 조작합니다. 컨트롤러에 손을 뻗지 않고도 메뉴와 게임 속 UI를 다룰 수 있습니다.",
+    "defaultProfile": "기본 프로필",
+    "defaultSummary": "커스텀 프로필이 없는 애플리케이션에 적용됩니다. 감도와 데드존을 취향에 맞게 조절하세요.",
+    "enableHeading": "Head Cursor 사용",
+    "enabledHint": "Head Cursor는 커스텀 프로필이 없는 애플리케이션에 적용됩니다.",
+    "disabledHint": "Head Cursor는 사용 설정된 커스텀 프로필이 켜지 않는 한 꺼져 있습니다.",
+    "profilesHeading": "커스텀 프로필",
+    "profilesSummary": "애플리케이션별 Head Cursor 설정입니다.",
+    "addProfile": "프로필 추가",
+    "broadEnablementLead": "광범위한 사용 설정이 켜져 있습니다.",
+    "broadEnablementBody": "Head Cursor는 커스텀 프로필이 없는 애플리케이션, 아직 확인하지 않은 애플리케이션에도 적용됩니다. 더 안전한 설정은 기본을 꺼 두고 이 목록을 애플리케이션 허용 목록으로 사용하는 것입니다.",
+    "emptyProfiles": "커스텀 프로필이 아직 없습니다. 애플리케이션에서 기본과 다른 Head Cursor 설정이 필요할 때 추가하세요.",
+    "binding": {
+      "label": "토글 바인딩",
+      "description": "할당된 컨트롤을 누르면 Head Cursor가 잠시 꺼지고, 다시 누르면 다시 켜집니다.",
+      "noneText": "바인딩이 할당되지 않았습니다. 토글 컨트롤을 할당하지 않는 한 Head Cursor는 켜져 있습니다."
+    },
+    "inverted": {
+      "label": "역방향 토글",
+      "onHint": "바인딩으로 Head Cursor가 켜집니다 (기본은 꺼짐, 누르면 켜짐).",
+      "offHint": "바인딩으로 Head Cursor가 꺼집니다 (기본은 켜짐, 누르면 일시 중지)."
+    }
+  },
+  "fields": {
+    "yawSensitivity": "요 감도",
+    "yawSensitivityHint": "머리의 좌우 움직임이 커서 속도로 얼마나 빠르게 바뀌는지입니다.",
+    "pitchSensitivity": "피치 감도",
+    "pitchSensitivityHint": "머리의 상하 움직임이 커서 속도로 얼마나 빠르게 바뀌는지입니다.",
+    "yawMultiplier": "요 배율",
+    "yawMultiplierHint": "커서의 좌우 이동량에 곱하는 배율입니다.",
+    "pitchMultiplier": "피치 배율",
+    "pitchMultiplierHint": "커서의 상하 이동량에 곱하는 배율입니다.",
+    "deadzone": "데드존 (도)",
+    "deadzoneHint": "커서가 움직이기 시작하기 전에 무시되는 머리 움직임의 최소값입니다. 값을 키우면 흔들림이 줄어듭니다.",
+    "maxMovePerFrame": "프레임당 최대 이동",
+    "maxMovePerFrameHint": "지나침을 막기 위한, 프레임당 커서의 최대 이동량입니다."
+  }
+}

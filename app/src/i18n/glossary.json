@@ -6,6 +6,7 @@
     { "term": "Turbo", "strict": true, "note": "Feature: frame pacing override." },
     { "term": "Pivot", "strict": true, "note": "Feature: head rotation tuning. 'pivot' as an ordinary word may be translated." },
     { "term": "Quadviews", "strict": true, "note": "Feature: dynamic foveated rendering." },
+    { "term": "Head Cursor", "strict": true, "note": "Feature: head movement controls the mouse cursor." },
     { "term": "Frame Generation", "strict": true, "note": "Feature: generated frames. Keep both words, capitalised." },
     { "term": "Position Assist", "strict": true, "note": "Pivot feature." },
     { "term": "Depth Lock", "strict": true, "note": "Depth feature." },

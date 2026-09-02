@@ -1,0 +1,40 @@
+{
+  "tab": {
+    "intro": "Control the mouse cursor with head movements. Useful for menu navigation and in-game UI interaction without reaching for a controller.",
+    "defaultProfile": "Default Profile",
+    "defaultSummary": "Applies to applications without a custom profile. Tune sensitivity and deadzone to your preference.",
+    "enableHeading": "Enable Head Cursor",
+    "enabledHint": "Head Cursor applies to applications without a custom profile.",
+    "disabledHint": "Head Cursor stays off unless an enabled custom profile turns it on.",
+    "profilesHeading": "Custom Profiles",
+    "profilesSummary": "Per-application settings for Head Cursor.",
+    "addProfile": "Add Profile",
+    "broadEnablementLead": "Broad enablement is active.",
+    "broadEnablementBody": "Head Cursor applies to applications without a custom profile, including ones you have not validated. The safer setup is Default Off with this list used as an application allowlist.",
+    "emptyProfiles": "No custom profiles yet. Add one when an application needs different Head Cursor settings from the default.",
+    "binding": {
+      "label": "Toggle Binding",
+      "description": "Press the assigned control to temporarily disable Head Cursor. Press again to re-enable.",
+      "noneText": "No binding assigned. Head Cursor stays active unless you assign a toggle control."
+    },
+    "inverted": {
+      "label": "Inverted toggle",
+      "onHint": "Binding enables Head Cursor (disabled by default, press to activate).",
+      "offHint": "Binding disables Head Cursor (enabled by default, press to suspend)."
+    }
+  },
+  "fields": {
+    "yawSensitivity": "Yaw sensitivity",
+    "yawSensitivityHint": "How quickly horizontal head movement translates to cursor speed.",
+    "pitchSensitivity": "Pitch sensitivity",
+    "pitchSensitivityHint": "How quickly vertical head movement translates to cursor speed.",
+    "yawMultiplier": "Yaw multiplier",
+    "yawMultiplierHint": "Scale factor for horizontal cursor displacement.",
+    "pitchMultiplier": "Pitch multiplier",
+    "pitchMultiplierHint": "Scale factor for vertical cursor displacement.",
+    "deadzone": "Deadzone (degrees)",
+    "deadzoneHint": "Minimum head movement before cursor starts moving. Higher values reduce jitter.",
+    "maxMovePerFrame": "Max move per frame",
+    "maxMovePerFrameHint": "Maximum cursor displacement per frame to prevent overshooting."
+  }
+}

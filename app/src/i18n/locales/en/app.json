@@ -41,6 +41,10 @@
       "label": "Frame Generation",
       "subtitle": "Smoother motion with generated frames"
     },
+    "headCursor": {
+      "label": "Head Cursor",
+      "subtitle": "Control the mouse cursor by moving your head"
+    },
     "pivotxr": {
       "label": "Pivot",
       "subtitle": "Rotation tuning - watch your six!"

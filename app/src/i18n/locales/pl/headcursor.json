@@ -1,0 +1,40 @@
+{
+  "tab": {
+    "intro": "Steruj kursorem myszy ruchami głowy. Przydatne do nawigacji w menu i korzystania z interfejsu w grze, bez sięgania po kontroler.",
+    "defaultProfile": "Profil domyślny",
+    "defaultSummary": "Dotyczy aplikacji bez profilu niestandardowego. Dostosuj czułość i martwą strefę do swoich preferencji.",
+    "enableHeading": "Włącz Head Cursor",
+    "enabledHint": "Head Cursor dotyczy aplikacji bez profilu niestandardowego.",
+    "disabledHint": "Head Cursor pozostaje wyłączony, chyba że włączy go włączony profil niestandardowy.",
+    "profilesHeading": "Profile niestandardowe",
+    "profilesSummary": "Ustawienia Head Cursor dla poszczególnych aplikacji.",
+    "addProfile": "Dodaj profil",
+    "broadEnablementLead": "Szerokie włączenie jest aktywne.",
+    "broadEnablementBody": "Head Cursor dotyczy aplikacji bez profilu niestandardowego, w tym tych, których nie zweryfikowano. Bezpieczniejsza konfiguracja to Domyślnie wył., z tą listą używaną jako lista dozwolonych aplikacji.",
+    "emptyProfiles": "Brak profili niestandardowych. Dodaj profil, gdy aplikacja potrzebuje ustawień Head Cursor innych niż domyślne.",
+    "binding": {
+      "label": "Przypisanie przełącznika",
+      "description": "Naciśnij przypisane sterowanie, aby tymczasowo wyłączyć Head Cursor. Naciśnij ponownie, aby włączyć.",
+      "noneText": "Brak przypisania. Head Cursor pozostaje aktywny, dopóki nie przypiszesz sterowania przełącznika."
+    },
+    "inverted": {
+      "label": "Odwrócone przełączanie",
+      "onHint": "Przypisanie włącza Head Cursor (domyślnie wyłączone, naciśnij, aby włączyć).",
+      "offHint": "Przypisanie wyłącza Head Cursor (domyślnie włączone, naciśnij, aby wstrzymać)."
+    }
+  },
+  "fields": {
+    "yawSensitivity": "Czułość odchylenia",
+    "yawSensitivityHint": "Jak szybko poziomy ruch głowy przekłada się na prędkość kursora.",
+    "pitchSensitivity": "Czułość pochylenia",
+    "pitchSensitivityHint": "Jak szybko pionowy ruch głowy przekłada się na prędkość kursora.",
+    "yawMultiplier": "Mnożnik odchylenia",
+    "yawMultiplierHint": "Współczynnik skalowania poziomego przesunięcia kursora.",
+    "pitchMultiplier": "Mnożnik pochylenia",
+    "pitchMultiplierHint": "Współczynnik skalowania pionowego przesunięcia kursora.",
+    "deadzone": "Martwa strefa (stopnie)",
+    "deadzoneHint": "Minimalny ruch głowy, zanim kursor zacznie się poruszać. Wyższe wartości zmniejszają drgania.",
+    "maxMovePerFrame": "Maks. ruch na klatkę",
+    "maxMovePerFrameHint": "Maksymalne przesunięcie kursora na klatkę, aby zapobiec przeregulowaniu."
+  }
+}

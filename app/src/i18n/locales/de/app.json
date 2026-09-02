@@ -41,6 +41,10 @@
       "label": "Frame Generation",
       "subtitle": "Flüssigere Bewegung mit generierten Bildern"
     },
+    "headCursor": {
+      "label": "Head Cursor",
+      "subtitle": "Mauszeiger per Kopfbewegung steuern"
+    },
     "pivotxr": {
       "label": "Pivot",
       "subtitle": "Drehungsabstimmung – check your six!"

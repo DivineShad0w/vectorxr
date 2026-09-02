@@ -40,6 +40,10 @@
       "label": "Frame Generation",
       "subtitle": "生成フレームでより滑らかな動き"
     },
+    "headCursor": {
+      "label": "Head Cursor",
+      "subtitle": "頭の動きでマウス カーソルを操作"
+    },
     "pivotxr": {
       "label": "Pivot",
       "subtitle": "回転の調整 - 後方を確認しよう!"

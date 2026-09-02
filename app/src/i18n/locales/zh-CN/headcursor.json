@@ -1,0 +1,40 @@
+{
+  "tab": {
+    "intro": "用头部移动控制鼠标光标。无需伸手拿控制器即可浏览菜单和操作游戏内 UI。",
+    "defaultProfile": "默认配置文件",
+    "defaultSummary": "应用于没有自定义配置文件的程序。按您的习惯调节灵敏度和死区。",
+    "enableHeading": "启用 Head Cursor",
+    "enabledHint": "Head Cursor 应用于没有自定义配置文件的程序。",
+    "disabledHint": "Head Cursor 保持关闭，除非有启用的自定义配置文件将其打开。",
+    "profilesHeading": "自定义配置文件",
+    "profilesSummary": "按程序设置 Head Cursor。",
+    "addProfile": "添加配置文件",
+    "broadEnablementLead": "已启用大范围启用。",
+    "broadEnablementBody": "Head Cursor 会应用于没有自定义配置文件的程序，包括您尚未验证过的程序。更安全的做法是保持默认关闭，并把这份列表当作允许的程序名单使用。",
+    "emptyProfiles": "还没有自定义配置文件。当某个程序需要不同于默认值的 Head Cursor 设置时，请添加一个。",
+    "binding": {
+      "label": "切换绑定",
+      "description": "按下指定的按键可暂时关闭 Head Cursor，再按一次重新启用。",
+      "noneText": "尚未指定绑定。除非您指定切换按键，Head Cursor 会一直保持启用。"
+    },
+    "inverted": {
+      "label": "反向切换",
+      "onHint": "绑定用于启用 Head Cursor（默认关闭，按下后启用）。",
+      "offHint": "绑定用于关闭 Head Cursor（默认开启，按下后暂停）。"
+    }
+  },
+  "fields": {
+    "yawSensitivity": "偏航灵敏度",
+    "yawSensitivityHint": "头部水平移动转化为光标速度的快慢。",
+    "pitchSensitivity": "俯仰灵敏度",
+    "pitchSensitivityHint": "头部垂直移动转化为光标速度的快慢。",
+    "yawMultiplier": "偏航倍率",
+    "yawMultiplierHint": "光标水平位移的倍率。",
+    "pitchMultiplier": "俯仰倍率",
+    "pitchMultiplierHint": "光标垂直位移的倍率。",
+    "deadzone": "死区（度）",
+    "deadzoneHint": "光标开始移动前被忽略的最小头部移动。数值越大，抖动越少。",
+    "maxMovePerFrame": "每帧最大移动",
+    "maxMovePerFrameHint": "每帧光标移动的最大距离，以避免移过头。"
+  }
+}

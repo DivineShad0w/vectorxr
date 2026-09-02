@@ -11,6 +11,7 @@ The current file format supports:
 - Depth defaults and per-application overrides
 - Pivot behavior profiles (`enhancedMotion` or `snapViews`), shared activation bindings, and reusable linked Nudge Sets
 - experimental Frame Generation under the optional `modules.framegen` block: defaults, per-application profiles, an A/B `toggleBinding`, and a module-level `diagnosticView`; configs without the block use the defaults (off)
+- head-controlled mouse cursor under the optional `modules.headCursor` block: defaults, per-application profiles, and a `toggleBinding` with an `invertedToggle` in each settings set; configs without the block use the defaults (off)
 - OSD `showFramegen` / `compactShowFramegen` and the `framegen` expanded row; saved `bodyOrder` lists without it get the row appended at the end
 - OSD `showFramegenFps` (default on): Frame Generation's state and the headset's frame rate beside the FPS value, in both layouts
 - OSD `showPerformance` (default on) / `compactShowPerformance` (default off) and the `performance` expanded row: CPU and GPU headroom against the frame budget and video memory; saved orders without it get the row appended at the end. Layers of 0.19.2 and earlier reject a `bodyOrder` that names a row they do not know, so the app keeps `bodyOrder` to the rows they know and writes the full order to `rowOrder` (layers since 0.19.3 read `rowOrder` first and skip unknown rows with a warning)

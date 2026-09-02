@@ -1,0 +1,40 @@
+{
+  "tab": {
+    "intro": "頭の動きでマウス カーソルを操作します。コントローラーに手を伸ばさなくても、メニュー操作やゲーム内の UI 操作ができます。",
+    "defaultProfile": "既定のプロファイル",
+    "defaultSummary": "カスタム プロファイルのないアプリケーションに適用されます。感度とデッドゾーンはお好みに合わせて調整してください。",
+    "enableHeading": "Head Cursor を有効にする",
+    "enabledHint": "Head Cursor はカスタム プロファイルのないアプリケーションに適用されます。",
+    "disabledHint": "Head Cursor は、有効なカスタム プロファイルがオンにしない限りオフです。",
+    "profilesHeading": "カスタム プロファイル",
+    "profilesSummary": "アプリケーションごとの Head Cursor の設定です。",
+    "addProfile": "プロファイルを追加",
+    "broadEnablementLead": "広範な有効化がオンになっています。",
+    "broadEnablementBody": "Head Cursor はカスタム プロファイルのないアプリケーション、まだ試していないアプリケーションにも適用されます。より安全な設定は、既定をオフのままにし、このリストを確認済みのアプリケーションの許可リストとして使うことです。",
+    "emptyProfiles": "カスタム プロファイルはまだありません。アプリケーションで既定とは違う Head Cursor の設定が必要な場合に追加してください。",
+    "binding": {
+      "label": "切り替えバインド",
+      "description": "割り当てたコントロールを押すと Head Cursor が一時的に無効になり、もう一度押すと再び有効になります。",
+      "noneText": "バインドが割り当てられていません。切り替えコントロールを割り当てない限り、Head Cursor は有効なままです。"
+    },
+    "inverted": {
+      "label": "逆転トグル",
+      "onHint": "バインドで Head Cursor が有効になります (既定はオフ、押すと有効)。",
+      "offHint": "バインドで Head Cursor が無効になります (既定はオン、押すと一時停止)。"
+    }
+  },
+  "fields": {
+    "yawSensitivity": "ヨー感度",
+    "yawSensitivityHint": "頭の横方向の動きがカーソルの速さにどう変わるかです。",
+    "pitchSensitivity": "ピッチ感度",
+    "pitchSensitivityHint": "頭の上下方向の動きがカーソルの速さにどう変わるかです。",
+    "yawMultiplier": "ヨー倍率",
+    "yawMultiplierHint": "カーソルの横方向の移動量の倍率です。",
+    "pitchMultiplier": "ピッチ倍率",
+    "pitchMultiplierHint": "カーソルの上下方向の移動量の倍率です。",
+    "deadzone": "デッドゾーン (度)",
+    "deadzoneHint": "カーソルが動き出す前に無視される頭の動きの最小値です。値を大きくするとちらつきが減ります。",
+    "maxMovePerFrame": "1 フレームあたりの最大移動",
+    "maxMovePerFrameHint": "行き過ぎを防ぐため、1 フレームでカーソルが動く最大の量です。"
+  }
+}

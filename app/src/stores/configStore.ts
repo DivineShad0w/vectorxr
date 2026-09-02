@@ -16,7 +16,7 @@ import {
 import { errorText } from '../lib/errors'
 import { t } from '../i18n/index.ts'
 import { createTaskQueue } from '../lib/taskQueue'
-import { cloneConfig, createApplication, createFrameGenProfile, createProfile, createPivotProfile, createQuadViewsProfile, createTurboProfile, defaultConfig, defaultProfileName, isDefaultProfileName } from '../lib/model'
+import { cloneConfig, createApplication, createFrameGenProfile, createHeadCursorProfile, createProfile, createPivotProfile, createQuadViewsProfile, createTurboProfile, defaultConfig, defaultProfileName, isDefaultProfileName } from '../lib/model'
 import type { AppTab, ModuleId, RuntimePacingObservation, TurboMetricsSession, VectorXRConfig } from '../lib/model'
 
 interface StoreState {
@@ -385,6 +385,29 @@ export function useConfigStore() {
     }
   }
 
+  function addHeadCursorProfile() {
+    const defaultApplicationId = state.config.applications[0]?.id
+    state.config.modules.headCursor!.profiles.push(
+      createHeadCursorProfile(state.config.modules.headCursor!.defaults, defaultApplicationId ? [defaultApplicationId] : []),
+    )
+  }
+
+  function removeHeadCursorProfile(index: number) {
+    state.config.modules.headCursor!.profiles.splice(index, 1)
+  }
+
+  function syncHeadCursorProfileName(index: number) {
+    const profile = state.config.modules.headCursor!.profiles[index]
+    if (!profile) {
+      return
+    }
+
+    if (!profile.name.trim() || isDefaultProfileName(profile.name)) {
+      const firstApplication = state.config.applications.find((application) => application.id === profile.applicationIds[0])
+      profile.name = firstApplication?.name || defaultProfileName()
+    }
+  }
+
   function addTurboProfile() {
     const defaultApplicationId = state.config.applications[0]?.id
     state.config.modules.turbo.profiles.push(createTurboProfile(defaultApplicationId ? [defaultApplicationId] : []))
@@ -456,6 +479,9 @@ export function useConfigStore() {
     } else if (moduleId === 'framegen') {
       state.config.modules.framegen.profiles.push(createFrameGenProfile(state.config.modules.framegen.defaults, applicationIds))
       syncFrameGenProfileName(state.config.modules.framegen.profiles.length - 1)
+    } else if (moduleId === 'headCursor') {
+      state.config.modules.headCursor!.profiles.push(createHeadCursorProfile(state.config.modules.headCursor!.defaults, applicationIds))
+      syncHeadCursorProfileName(state.config.modules.headCursor!.profiles.length - 1)
     } else {
       state.config.modules.quadviews.profiles.push(createQuadViewsProfile(state.config.modules.quadviews.defaults, applicationIds))
       syncQuadViewsProfileName(state.config.modules.quadviews.profiles.length - 1)
@@ -513,6 +539,9 @@ export function useConfigStore() {
     for (const profile of state.config.modules.framegen.profiles) {
       profile.applicationIds = profile.applicationIds.filter((id) => id !== application.id)
     }
+    for (const profile of state.config.modules.headCursor!.profiles) {
+      profile.applicationIds = profile.applicationIds.filter((id) => id !== application.id)
+    }
   }
 
   return {
@@ -541,6 +570,9 @@ export function useConfigStore() {
     addQuadViewsProfile,
     removeQuadViewsProfile,
     syncQuadViewsProfileName,
+    addHeadCursorProfile,
+    removeHeadCursorProfile,
+    syncHeadCursorProfileName,
     addTurboProfile,
     removeTurboProfile,
     syncTurboProfileName,
