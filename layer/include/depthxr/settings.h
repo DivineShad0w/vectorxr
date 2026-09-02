@@ -590,6 +590,37 @@ struct FrameGenResolvedSettings : FrameGenSettings {
     FrameGenDiagnosticView diagnostic_view{FrameGenDiagnosticView::kOff};
 };
 
+// Head-controlled mouse cursor: reads HMD yaw/pitch deltas and sends
+// relative mouse movement through Windows SendInput.
+struct HeadCursorSettings {
+    bool enabled{false};
+    double yaw_sensitivity{1.0};
+    double pitch_sensitivity{1.0};
+    double yaw_multiplier{2.0};
+    double pitch_multiplier{2.0};
+    double deadzone_degrees{0.5};
+    int max_move_per_frame{200};
+    InputBinding toggle_binding;
+    bool inverted_toggle{false};
+};
+
+struct HeadCursorProfile {
+    std::string name;
+    std::vector<std::string> application_ids;
+    bool enabled{true};
+    ProfileMode mode{ProfileMode::Custom};
+    HeadCursorSettings settings;
+};
+
+struct HeadCursorModuleConfig {
+    bool enabled{false};
+    HeadCursorSettings defaults;
+    std::vector<HeadCursorProfile> profiles;
+};
+
+struct HeadCursorResolvedSettings : HeadCursorSettings {
+};
+
 struct ConfigDocument {
     int version{3};
     CoreSettings core;
@@ -599,6 +630,7 @@ struct ConfigDocument {
     QuadViewsModuleConfig quadviews;
     TurboModuleConfig turbo;
     FrameGenModuleConfig framegen;
+    HeadCursorModuleConfig head_cursor;
 };
 
 struct ResolvedRuntimeConfig {
@@ -609,6 +641,7 @@ struct ResolvedRuntimeConfig {
     QuadViewsResolvedSettings quadviews;
     TurboResolvedSettings turbo;
     FrameGenResolvedSettings framegen;
+    HeadCursorResolvedSettings head_cursor;
 };
 
 const char* ToString(LogLevel level);

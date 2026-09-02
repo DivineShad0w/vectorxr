@@ -1,4 +1,4 @@
-import type { CoreConfig, DepthXRProfileConfig, DepthXRSettings, FrameGenProfileConfig, FrameGenSettings, InputBinding, PivotViewControls, PivotXRProfileConfig, PivotXRSettings, QuadViewsProfileConfig, QuadViewsSettings, RegisteredApplication, VectorXRConfig } from './model'
+import type { CoreConfig, DepthXRProfileConfig, DepthXRSettings, FrameGenProfileConfig, FrameGenSettings, HeadCursorConfig, HeadCursorProfileConfig, InputBinding, PivotViewControls, PivotXRProfileConfig, PivotXRSettings, QuadViewsProfileConfig, QuadViewsSettings, RegisteredApplication, VectorXRConfig } from './model'
 
 // Runtime value imports from './model' are avoided so node:test can load this
 // module directly; keep these lists in sync with model.ts.
@@ -358,6 +358,33 @@ function validateFrameGenSettings(prefix: string, settings: FrameGenSettings): s
   return errors
 }
 
+// Head Cursor: the head's yaw and pitch move the desktop mouse. The bounds here
+// match the sliders in Head Cursor tab, the schema, and the layer's own parsing.
+function validateHeadCursorSettings(prefix: string, settings: HeadCursorConfig): string[] {
+  const errors: string[] = []
+
+  const bounded = [
+    ['yawSensitivity', settings.yawSensitivity, 0.1, 5],
+    ['pitchSensitivity', settings.pitchSensitivity, 0.1, 5],
+    ['yawMultiplier', settings.yawMultiplier, 0.5, 10],
+    ['pitchMultiplier', settings.pitchMultiplier, 0.5, 10],
+    ['deadzoneDegrees', settings.deadzoneDegrees, 0, 5],
+  ] as const
+  for (const [name, value, min, max] of bounded) {
+    if (Number.isNaN(value) || value < min || value > max) {
+      errors.push(`${prefix}${name} must be between ${min} and ${max}`)
+    }
+  }
+
+  if (!Number.isInteger(settings.maxMovePerFrame) || settings.maxMovePerFrame < 50 || settings.maxMovePerFrame > 500) {
+    errors.push(`${prefix}maxMovePerFrame must be a whole number from 50 to 500`)
+  }
+
+  errors.push(...validateInputBinding(`${prefix}toggleBinding`, settings.toggleBinding))
+
+  return errors
+}
+
 function validateApplications(applications: RegisteredApplication[]): string[] {
   const errors: string[] = []
   const seenIds = new Set<string>()
@@ -566,6 +593,51 @@ function validateFrameGenProfileConflicts(profiles: FrameGenProfileConfig[]): st
   return errors
 }
 
+function validateHeadCursorProfile(profile: HeadCursorProfileConfig, index: number, applicationIds: Set<string>): string[] {
+  const errors: string[] = []
+  const prefix = `modules.headCursor.profiles[${index}].`
+
+  if (!profile.name.trim()) {
+    errors.push(`${prefix}name is required`)
+  }
+
+  const seenProfileApplicationIds = new Set<string>()
+  for (const applicationId of profile.applicationIds) {
+    if (!applicationIds.has(applicationId)) {
+      errors.push(`${prefix}applicationIds references unknown application: ${applicationId}`)
+    }
+    if (seenProfileApplicationIds.has(applicationId)) {
+      errors.push(`${prefix}applicationIds duplicates ${applicationId}`)
+    }
+    seenProfileApplicationIds.add(applicationId)
+  }
+
+  errors.push(...validateHeadCursorSettings(`${prefix}settings.`, profile.settings))
+  return errors
+}
+
+function validateHeadCursorProfileConflicts(profiles: HeadCursorProfileConfig[]): string[] {
+  const errors: string[] = []
+  const firstProfileByApplication = new Map<string, number>()
+
+  profiles.forEach((profile, index) => {
+    if (!profile.enabled) {
+      return
+    }
+
+    for (const applicationId of profile.applicationIds) {
+      const firstIndex = firstProfileByApplication.get(applicationId)
+      if (firstIndex !== undefined) {
+        errors.push(`modules.headCursor.profiles[${index}] conflicts with profiles[${firstIndex}] for application ${applicationId}; first enabled profile wins`)
+      } else {
+        firstProfileByApplication.set(applicationId, index)
+      }
+    }
+  })
+
+  return errors
+}
+
 // Mirrors the layer resolver: the first enabled profile targeting the
 // application turns the module on; otherwise the default profile decides.
 function moduleOnForApplication(module: { enabled: boolean; profiles: Array<{ enabled: boolean; applicationIds: string[] }> }, applicationId: string): { on: boolean; custom: boolean } {
@@ -677,6 +749,17 @@ export function validateConfig(config: VectorXRConfig): string[] {
     errors.push(...validateFrameGenProfile(profile, index, applicationIds))
   })
   errors.push(...validateFrameGenProfileConflicts(config.modules.framegen.profiles))
+
+  // Head Cursor is optional in configs written before it existed, so an absent
+  // block stays valid and falls back to the app's defaults.
+  const headCursor = config.modules.headCursor
+  if (headCursor) {
+    errors.push(...validateHeadCursorSettings('modules.headCursor.defaults.', headCursor.defaults))
+    headCursor.profiles.forEach((profile, index) => {
+      errors.push(...validateHeadCursorProfile(profile, index, applicationIds))
+    })
+    errors.push(...validateHeadCursorProfileConflicts(headCursor.profiles))
+  }
 
   config.modules.turbo.profiles.forEach((profile, index) => {
     const prefix = `modules.turbo.profiles[${index}].`

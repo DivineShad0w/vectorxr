@@ -1754,6 +1754,9 @@
         },
         "framegen": {
           "$ref": "#/$defs/framegenModule"
+        },
+        "headCursor": {
+          "$ref": "#/$defs/headCursorModule"
         }
       }
     },
@@ -1821,6 +1824,122 @@
           "$ref": "#/$defs/pivotPositionDirection"
         }
       }
+    },
+    "headCursorSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Head Cursor tuning. The headset's yaw and pitch move the desktop mouse through Windows SendInput; every field applies live during play.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether these settings drive the cursor. The module or a matching profile has to be on as well."
+        },
+        "yawSensitivity": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 5,
+          "default": 1,
+          "description": "Mouse pixels per degree of head yaw, before the multiplier."
+        },
+        "pitchSensitivity": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 5,
+          "default": 1,
+          "description": "Mouse pixels per degree of head pitch, before the multiplier."
+        },
+        "yawMultiplier": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 10,
+          "default": 2,
+          "description": "Extra gain on head yaw, so a small neck movement crosses the screen."
+        },
+        "pitchMultiplier": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 10,
+          "default": 2,
+          "description": "Extra gain on head pitch."
+        },
+        "deadzoneDegrees": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5,
+          "default": 0.5,
+          "description": "Head movement under this many degrees is ignored, so idle head shake leaves the cursor alone."
+        },
+        "maxMovePerFrame": {
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 500,
+          "default": 200,
+          "description": "Cap in mouse pixels for a single frame, so a fast head turn cannot throw the cursor off screen."
+        },
+        "toggleBinding": {
+          "$ref": "#/$defs/inputBinding",
+          "description": "Binding that flips the cursor on and off during play. None leaves the cursor to the profile state."
+        },
+        "invertedToggle": {
+          "type": "boolean",
+          "default": false,
+          "description": "Start from the opposite toggle state, so the first press turns the cursor off instead of on."
+        }
+      }
+    },
+    "headCursorProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "enabled",
+        "applicationIds",
+        "settings"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Applies live during play. The first enabled profile that lists the application wins."
+        },
+        "applicationIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "uniqueItems": true
+        },
+        "settings": {
+          "$ref": "#/$defs/headCursorSettings"
+        }
+      }
+    },
+    "headCursorModule": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Head Cursor: mouse control from head pose. Optional; configs without it use the defaults (off).",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Default Profile. Applies live during play."
+        },
+        "defaults": {
+          "$ref": "#/$defs/headCursorSettings"
+        },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/headCursorProfile"
+          }
+        }
+      }
     }
   }
 }
+
