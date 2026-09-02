@@ -18,6 +18,7 @@ import OpenXrLayersTab from './components/tabs/OpenXrLayersTab.vue'
 import PivotXrTab from './components/tabs/PivotXrTab.vue'
 import QuadViewsTab from './components/tabs/QuadViewsTab.vue'
 import TurboTab from './components/tabs/TurboTab.vue'
+import HeadCursorTab from './components/tabs/HeadCursorTab.vue'
 import { exportConfigFile, loadDebugSources, loadLogSnapshot, loadOpenXrLayers, loadRuntimeStatus, loadSeenApps, loadRuntimePacing, loadTurboMetrics, type LogSnapshot, type OpenXrLayerSnapshot } from './lib/commands'
 import { createDebugPackage, saveDebugPackage } from './lib/debugPackage'
 import { buildHealthSummary } from './lib/health'
@@ -71,11 +72,19 @@ const healthSummary = computed(() => buildHealthSummary({
 }))
 
 function enabledProfileCount(moduleId: ModuleId) {
-  return store.state.config.modules[moduleId].profiles.filter((profile) => profile.enabled).length
+  const module = store.state.config.modules[moduleId]
+  if (!module) {
+    return 0
+  }
+  return module.profiles.filter((profile: any) => profile.enabled).length
 }
 
 function enhancementActive(moduleId: ModuleId) {
-  return store.state.config.modules[moduleId].enabled || enabledProfileCount(moduleId) > 0
+  const module = store.state.config.modules[moduleId]
+  if (!module) {
+    return false
+  }
+  return 'enabled' in module && module.enabled || enabledProfileCount(moduleId) > 0
 }
 
 const tabs = computed(() => [
@@ -128,6 +137,13 @@ const tabs = computed(() => [
     subtitle: 'Frame pacing override for stubborn fps caps',
     status: enhancementActive('turbo') ? 'Active' : 'Inactive',
     enhancementActive: enhancementActive('turbo'),
+  },
+  {
+    id: 'headCursor' as const,
+    label: 'Head Cursor',
+    subtitle: 'Control mouse cursor with head movements',
+    status: enhancementActive('headCursor') ? 'Active' : 'Inactive',
+    enhancementActive: enhancementActive('headCursor'),
   },
   {
     id: 'pivotxr' as const,
@@ -496,6 +512,14 @@ async function confirmResetConfig() {
           @sync-turbo-profile-name="store.syncTurboProfileName"
           @rediscover-runtime="store.rediscoverRuntimePacing"
           @clear-turbo-metrics="store.clearTurboMetricsSessions"
+        />
+        <HeadCursorTab
+          v-else-if="store.state.activeTab === 'headCursor'"
+          :config="store.state.config.modules.headCursor!"
+          :applications="store.state.config.applications"
+          @add-profile="store.addHeadCursorProfile"
+          @remove-profile="store.removeHeadCursorProfile"
+          @sync-profile-name="store.syncHeadCursorProfileName"
         />
         <PivotXrTab
           v-else-if="store.state.activeTab === 'pivotxr'"

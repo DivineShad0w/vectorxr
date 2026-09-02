@@ -90,13 +90,14 @@ const moduleMeta: { id: ModuleId; label: string }[] = [
   { id: 'turbo', label: 'Turbo' },
   { id: 'pivotxr', label: 'Pivot' },
   { id: 'depthxr', label: 'Depth' },
+  { id: 'headCursor', label: 'Head Cursor' },
 ]
 
 const enhancementRows = computed(() =>
   moduleMeta.map(({ id, label }) => {
-    const module = props.config.modules[id]
+    const module = props.config.modules[id]!
     const totalCustom = module.profiles.length
-    const enabledCustom = module.profiles.filter((profile) => profile.enabled).length
+    const enabledCustom = module.profiles.filter((profile: any) => profile.enabled).length
     return {
       id,
       label,
