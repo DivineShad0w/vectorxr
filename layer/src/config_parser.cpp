@@ -1137,6 +1137,169 @@ bool ParseTurboProfile(const JsonValue& value, TurboProfile& out, std::string& e
     return true;
 }
 
+bool ParseHeadCursorSettings(const JsonValue::Object& object, HeadCursorSettings& out, std::string& error) {
+    out = HeadCursorSettings{};
+
+    static const std::unordered_set<std::string> allowed_keys = {
+        "enabled", "yawSensitivity", "pitchSensitivity",
+        "yawMultiplier", "pitchMultiplier", "deadzoneDegrees", "maxMovePerFrame",
+        "toggleBinding", "invertedToggle"
+    };
+    if (!CheckAllowedKeys(object, allowed_keys, error)) {
+        return false;
+    }
+
+    for (const auto& [key, value] : object) {
+        if (key == "enabled") {
+            if (!value.IsBool()) {
+                error = "headCursor.enabled must be a boolean";
+                return false;
+            }
+            out.enabled = value.AsBool();
+        } else if (key == "yawSensitivity") {
+            if (!value.IsNumber()) {
+                error = "headCursor.yawSensitivity must be a number";
+                return false;
+            }
+            out.yaw_sensitivity = value.AsNumber();
+        } else if (key == "pitchSensitivity") {
+            if (!value.IsNumber()) {
+                error = "headCursor.pitchSensitivity must be a number";
+                return false;
+            }
+            out.pitch_sensitivity = value.AsNumber();
+        } else if (key == "yawMultiplier") {
+            if (!value.IsNumber()) {
+                error = "headCursor.yawMultiplier must be a number";
+                return false;
+            }
+            out.yaw_multiplier = value.AsNumber();
+        } else if (key == "pitchMultiplier") {
+            if (!value.IsNumber()) {
+                error = "headCursor.pitchMultiplier must be a number";
+                return false;
+            }
+            out.pitch_multiplier = value.AsNumber();
+        } else if (key == "deadzoneDegrees") {
+            if (!value.IsNumber()) {
+                error = "headCursor.deadzoneDegrees must be a number";
+                return false;
+            }
+            out.deadzone_degrees = value.AsNumber();
+        } else if (key == "maxMovePerFrame") {
+            if (!value.IsNumber()) {
+                error = "headCursor.maxMovePerFrame must be a number";
+                return false;
+            }
+            out.max_move_per_frame = static_cast<int>(value.AsNumber());
+        } else if (key == "toggleBinding") {
+            if (!value.IsObject()) {
+                error = "headCursor.toggleBinding must be an object";
+                return false;
+            }
+            if (!ParseInputBinding(value, out.toggle_binding, error)) {
+                return false;
+            }
+        } else if (key == "invertedToggle") {
+            if (!value.IsBool()) {
+                error = "headCursor.invertedToggle must be a boolean";
+                return false;
+            }
+            out.inverted_toggle = value.AsBool();
+        }
+    }
+
+    return true;
+}
+
+bool ParseHeadCursorProfile(const JsonValue::Object& object, HeadCursorProfile& out, std::string& error) {
+    out = HeadCursorProfile{};
+
+    static const std::unordered_set<std::string> allowed_keys = {
+        "name", "enabled", "applicationIds", "settings"
+    };
+    if (!CheckAllowedKeys(object, allowed_keys, error)) {
+        return false;
+    }
+
+    for (const auto& [key, value] : object) {
+        if (key == "name") {
+            if (!value.IsString()) {
+                error = "headCursor profile name must be a string";
+                return false;
+            }
+            out.name = value.AsString();
+        } else if (key == "enabled") {
+            if (!value.IsBool()) {
+                error = "headCursor profile enabled must be a boolean";
+                return false;
+            }
+            out.enabled = value.AsBool();
+        } else if (key == "applicationIds") {
+            if (!ParseStringArray(value, "headCursor profile applicationIds", out.application_ids, error)) {
+                return false;
+            }
+        } else if (key == "settings") {
+            if (!value.IsObject()) {
+                error = "headCursor profile settings must be an object";
+                return false;
+            }
+            if (!ParseHeadCursorSettings(value.AsObject(), out.settings, error)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool ParseHeadCursorModule(const JsonValue::Object& object, HeadCursorModuleConfig& out, std::string& error) {
+    out = HeadCursorModuleConfig{};
+
+    static const std::unordered_set<std::string> allowed_keys = {
+        "enabled", "defaults", "profiles"
+    };
+    if (!CheckAllowedKeys(object, allowed_keys, error)) {
+        return false;
+    }
+
+    for (const auto& [key, value] : object) {
+        if (key == "enabled") {
+            if (!value.IsBool()) {
+                error = "modules.headCursor.enabled must be a boolean";
+                return false;
+            }
+            out.enabled = value.AsBool();
+        } else if (key == "defaults") {
+            if (!value.IsObject()) {
+                error = "modules.headCursor.defaults must be an object";
+                return false;
+            }
+            if (!ParseHeadCursorSettings(value.AsObject(), out.defaults, error)) {
+                return false;
+            }
+        } else if (key == "profiles") {
+            if (!value.IsArray()) {
+                error = "modules.headCursor.profiles must be an array";
+                return false;
+            }
+            for (const auto& profile_val : value.AsArray()) {
+                if (!profile_val.IsObject()) {
+                    error = "modules.headCursor.profiles items must be objects";
+                    return false;
+                }
+                HeadCursorProfile profile;
+                if (!ParseHeadCursorProfile(profile_val.AsObject(), profile, error)) {
+                    return false;
+                }
+                out.profiles.push_back(std::move(profile));
+            }
+        }
+    }
+
+    return true;
+}
+
 bool ParseTurboModule(const JsonValue::Object& object, TurboModuleConfig& out, std::string& error) {
     static const std::unordered_set<std::string> allowed = {
         "enabled",
@@ -2132,7 +2295,7 @@ bool ParseVectorDocument(const JsonValue::Object& root_object, ConfigDocument& o
         return false;
     }
 
-    static const std::unordered_set<std::string> allowed_modules = {"depthxr", "pivotxr", "quadviews", "turbo"};
+    static const std::unordered_set<std::string> allowed_modules = {"depthxr", "pivotxr", "quadviews", "turbo", "headCursor"};
     if (!CheckAllowedKeys(*modules_object, allowed_modules, error)) {
         return false;
     }
@@ -2171,6 +2334,15 @@ bool ParseVectorDocument(const JsonValue::Object& root_object, ConfigDocument& o
         const JsonValue::Object* turbo_object = RequireObject(turbo_it->second, "modules.turbo", error);
         if (!turbo_object || !ParseTurboModule(*turbo_object, out.turbo, error)) {
             return false;
+        }
+    }
+
+    // Optional: head-controlled mouse cursor.
+    const auto head_cursor_it = modules_object->find("headCursor");
+    if (head_cursor_it != modules_object->end()) {
+        const JsonValue::Object* head_cursor_object = RequireObject(head_cursor_it->second, "modules.headCursor", error);
+        if (!head_cursor_object || !ParseHeadCursorModule(*head_cursor_object, out.head_cursor, error)) {
+            error.clear(); // Do not abort the entire config.
         }
     }
 

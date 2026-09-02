@@ -117,10 +117,6 @@ void ApplyPivotSettings(PivotXrResolvedProfile& resolved, const PivotXrSettings&
 
 namespace {
 
-// Binding identity for activation arbitration: two profiles collide when the
-// same physical input would trigger both. Sound and display metadata are
-// irrelevant here. Unbound (None) profiles never collide — they simply can't
-// be activated by input.
 bool SameActivationInput(const InputBinding& lhs, const InputBinding& rhs) {
     if (lhs.type != rhs.type || lhs.type == InputBindingType::None) {
         return false;
@@ -232,8 +228,6 @@ PivotXrResolvedSettings ResolvePivotXrSettings(const ConfigDocument& config, std
         }
     }
 
-    // Custom profiles replace the default profile entirely; the default only
-    // participates when no custom profile targets this application.
     if (resolved.profiles.empty() && config.pivotxr.enabled) {
         PivotXrResolvedProfile candidate;
         candidate.name = "Default";
@@ -332,6 +326,47 @@ TurboResolvedSettings ResolveTurboSettings(const ConfigDocument& config, std::st
     return resolved;
 }
 
+HeadCursorResolvedSettings ResolveHeadCursorSettings(const ConfigDocument& config, std::string_view exe_name) {
+    HeadCursorResolvedSettings resolved;
+
+    const auto& hc = config.head_cursor;
+    resolved.enabled = hc.enabled;
+    resolved.yaw_sensitivity = hc.defaults.yaw_sensitivity;
+    resolved.pitch_sensitivity = hc.defaults.pitch_sensitivity;
+    resolved.yaw_multiplier = hc.defaults.yaw_multiplier;
+    resolved.pitch_multiplier = hc.defaults.pitch_multiplier;
+    resolved.deadzone_degrees = hc.defaults.deadzone_degrees;
+    resolved.max_move_per_frame = hc.defaults.max_move_per_frame;
+    resolved.toggle_binding = hc.defaults.toggle_binding;
+    resolved.inverted_toggle = hc.defaults.inverted_toggle;
+
+    // Match a custom profile for this application
+    const RegisteredApplication* application = FindMatchingApplication(config, exe_name);
+    if (!application) {
+        return resolved;
+    }
+
+    for (const auto& profile : hc.profiles) {
+        if (!profile.enabled) {
+            continue;
+        }
+        if (std::find(profile.application_ids.begin(), profile.application_ids.end(), application->id) != profile.application_ids.end()) {
+            resolved.enabled = profile.enabled;
+            resolved.yaw_sensitivity = profile.settings.yaw_sensitivity;
+            resolved.pitch_sensitivity = profile.settings.pitch_sensitivity;
+            resolved.yaw_multiplier = profile.settings.yaw_multiplier;
+            resolved.pitch_multiplier = profile.settings.pitch_multiplier;
+            resolved.deadzone_degrees = profile.settings.deadzone_degrees;
+            resolved.max_move_per_frame = profile.settings.max_move_per_frame;
+            resolved.toggle_binding = profile.settings.toggle_binding;
+            resolved.inverted_toggle = profile.settings.inverted_toggle;
+            return resolved;
+        }
+    }
+
+    return resolved;
+}
+
 ResolvedRuntimeConfig ResolveRuntimeConfig(const ConfigDocument& config, std::string_view exe_name) {
     ResolvedRuntimeConfig resolved;
     resolved.core = config.core;
@@ -340,6 +375,7 @@ ResolvedRuntimeConfig ResolveRuntimeConfig(const ConfigDocument& config, std::st
     resolved.pivotxr = ResolvePivotXrSettings(config, exe_name);
     resolved.quadviews = ResolveQuadViewsSettings(config, exe_name);
     resolved.turbo = ResolveTurboSettings(config, exe_name);
+    resolved.head_cursor = ResolveHeadCursorSettings(config, exe_name);
     return resolved;
 }
 

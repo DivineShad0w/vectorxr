@@ -80,9 +80,9 @@ const moduleMeta: { id: ModuleId; label: string }[] = [
 
 const enhancementRows = computed(() =>
   moduleMeta.map(({ id, label }) => {
-    const module = props.config.modules[id]
+    const module = props.config.modules[id]!
     const totalCustom = module.profiles.length
-    const enabledCustom = module.profiles.filter((profile) => profile.enabled).length
+    const enabledCustom = module.profiles.filter((profile: any) => profile.enabled).length
     return {
       id,
       label,

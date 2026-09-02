@@ -5,7 +5,7 @@ export type PivotResponseMode = 'continuous' | 'stepped'
 export type PivotStepGlideMode = 'instant' | 'glide'
 export type PivotProfileBehavior = 'enhancedMotion' | 'snapViews'
 export type QuadViewsTrackingMode = 'head' | 'eye'
-export type AppTab = 'home' | 'core' | 'registry' | 'layers' | 'about' | 'depthxr' | 'pivotxr' | 'quadviews' | 'turbo'
+export type AppTab = 'home' | 'core' | 'registry' | 'layers' | 'about' | 'depthxr' | 'pivotxr' | 'quadviews' | 'turbo' | 'headCursor'
 export const keyboardBindingKeyGroups = [
   {
     label: 'Function Keys',
@@ -296,6 +296,31 @@ export interface TurboModuleConfig {
   profiles: TurboProfileConfig[]
 }
 
+export interface HeadCursorConfig {
+  enabled: boolean
+  yawSensitivity: number
+  pitchSensitivity: number
+  yawMultiplier: number
+  pitchMultiplier: number
+  deadzoneDegrees: number
+  maxMovePerFrame: number
+  toggleBinding: InputBinding
+  invertedToggle: boolean
+}
+
+export interface HeadCursorModuleConfig {
+  enabled: boolean
+  defaults: HeadCursorConfig
+  profiles: HeadCursorProfileConfig[]
+}
+
+export interface HeadCursorProfileConfig {
+  name: string
+  enabled: boolean
+  applicationIds: string[]
+  settings: HeadCursorConfig
+}
+
 // One row of the layer-written runtime-pacing.json sidecar: what Auto pacing
 // learned about a runtime. Read-only facts; user intent lives in the config.
 export interface RuntimePacingObservation {
@@ -352,6 +377,7 @@ export interface VectorXRConfig {
     pivotxr: PivotXRModuleConfig
     quadviews: QuadViewsModuleConfig
     turbo: TurboModuleConfig
+    headCursor?: HeadCursorModuleConfig
   }
 }
 
@@ -596,6 +622,20 @@ export function defaultQuadViewsSettings(): QuadViewsSettings {
   }
 }
 
+export function defaultHeadCursorConfig(): HeadCursorConfig {
+  return {
+    enabled: false,
+    yawSensitivity: 1.0,
+    pitchSensitivity: 1.0,
+    yawMultiplier: 2.0,
+    pitchMultiplier: 2.0,
+    deadzoneDegrees: 0.5,
+    maxMovePerFrame: 200,
+    toggleBinding: defaultNoneBinding(),
+    invertedToggle: false,
+  }
+}
+
 export function defaultSoundFeedback(): SoundFeedback {
   return {
     enabled: false,
@@ -666,6 +706,11 @@ export function defaultConfig(): VectorXRConfig {
         runtimePins: {},
         metricsMode: 'always',
         metricsBinding: defaultNoneBinding(),
+        profiles: [],
+      },
+      headCursor: {
+        enabled: false,
+        defaults: defaultHeadCursorConfig(),
         profiles: [],
       },
     },
@@ -744,6 +789,18 @@ export function createTurboProfile(applicationIds: string[] = []): TurboProfileC
     name: 'New Profile',
     enabled: true,
     applicationIds,
+  }
+}
+
+export function createHeadCursorProfile(
+  defaultSettings: HeadCursorConfig,
+  applicationIds: string[] = [],
+): HeadCursorProfileConfig {
+  return {
+    name: 'New Profile',
+    enabled: true,
+    applicationIds,
+    settings: { ...defaultSettings },
   }
 }
 
@@ -919,6 +976,22 @@ function normalizeQuadViewsSettings(value: unknown, fallback: QuadViewsSettings)
     verticalOffsetDegrees: normalizeNumber(source.verticalOffsetDegrees, fallback.verticalOffsetDegrees),
     gazeSmoothing: normalizeNumber(source.gazeSmoothing, fallback.gazeSmoothing),
     gazeDeadzoneDegrees: normalizeNumber(source.gazeDeadzoneDegrees, fallback.gazeDeadzoneDegrees),
+  }
+}
+
+function normalizeHeadCursorSettings(value: unknown, fallback: HeadCursorConfig): HeadCursorConfig {
+  const source = isRecord(value) ? value : {}
+
+  return {
+    enabled: normalizeBoolean(source.enabled, fallback.enabled),
+    yawSensitivity: normalizeNumber(source.yawSensitivity, fallback.yawSensitivity),
+    pitchSensitivity: normalizeNumber(source.pitchSensitivity, fallback.pitchSensitivity),
+    yawMultiplier: normalizeNumber(source.yawMultiplier, fallback.yawMultiplier),
+    pitchMultiplier: normalizeNumber(source.pitchMultiplier, fallback.pitchMultiplier),
+    deadzoneDegrees: normalizeNumber(source.deadzoneDegrees, fallback.deadzoneDegrees),
+    maxMovePerFrame: normalizeNumber(source.maxMovePerFrame, fallback.maxMovePerFrame),
+    toggleBinding: normalizeInputBinding(source.toggleBinding, fallback.toggleBinding),
+    invertedToggle: normalizeBoolean(source.invertedToggle, fallback.invertedToggle),
   }
 }
 
@@ -1399,10 +1472,12 @@ function normalizeVectorXRConfig(value: unknown): VectorXRConfig {
   const pivotxr = isRecord(modules.pivotxr) ? modules.pivotxr : {}
   const quadviews = isRecord(modules.quadviews) ? modules.quadviews : {}
   const turbo = isRecord(modules.turbo) ? modules.turbo : {}
+  const headCursor = isRecord(modules.headCursor) ? modules.headCursor : {}
   const depthProfileValues = Array.isArray(depthxr.profiles) ? depthxr.profiles : []
   const pivotProfileValues = Array.isArray(pivotxr.profiles) ? pivotxr.profiles : []
   const quadViewsProfileValues = Array.isArray(quadviews.profiles) ? quadviews.profiles : []
   const turboProfileValues = Array.isArray(turbo.profiles) ? turbo.profiles : []
+  const headCursorProfileValues = Array.isArray(headCursor.profiles) ? headCursor.profiles : []
   const applicationValues = Array.isArray(source.applications) ? source.applications : []
   const applications: RegisteredApplication[] = []
 
@@ -1563,6 +1638,22 @@ function normalizeVectorXRConfig(value: unknown): VectorXRConfig {
           }
         }),
       },
+      headCursor: {
+        enabled: normalizeBoolean(headCursor.enabled, fallback.modules.headCursor!.enabled),
+        defaults: normalizeHeadCursorSettings(headCursor.defaults, fallback.modules.headCursor!.defaults),
+        profiles: headCursorProfileValues.map((profileValue) => {
+          const profile = isRecord(profileValue) ? profileValue : {}
+          const settings = normalizeHeadCursorSettings(profile.settings, fallback.modules.headCursor!.defaults)
+          const applicationIds = applicationIdsFromProfile(profile, applications)
+
+          return {
+            name: normalizeString(profile.name, 'New Profile'),
+            enabled: normalizeBoolean(profile.enabled, true),
+            applicationIds,
+            settings,
+          }
+        }),
+      },
     },
   }
 }
@@ -1579,13 +1670,14 @@ export function cloneConfig(config: VectorXRConfig): VectorXRConfig {
   return JSON.parse(JSON.stringify(config)) as VectorXRConfig
 }
 
-export type ModuleId = 'depthxr' | 'pivotxr' | 'quadviews' | 'turbo'
+export type ModuleId = 'depthxr' | 'pivotxr' | 'quadviews' | 'turbo' | 'headCursor'
 
 export const moduleLabels: Record<ModuleId, string> = {
   depthxr: 'Depth',
   pivotxr: 'Pivot',
   quadviews: 'Quadviews',
   turbo: 'Turbo',
+  headCursor: 'Head Cursor',
 }
 
 export interface ModuleApplicationState {
@@ -1596,9 +1688,9 @@ export interface ModuleApplicationState {
 
 // Mirrors the layer's resolver: the first enabled profile targeting the app wins.
 export function moduleStateForApplication(config: VectorXRConfig, moduleId: ModuleId, applicationId: string): ModuleApplicationState {
-  const module = config.modules[moduleId]
+  const module = config.modules[moduleId]!
 
-  const profiles: Array<DepthXRProfileConfig | PivotXRProfileConfig | QuadViewsProfileConfig | TurboProfileConfig> = module.profiles
+  const profiles: Array<DepthXRProfileConfig | PivotXRProfileConfig | QuadViewsProfileConfig | TurboProfileConfig | HeadCursorProfileConfig> = module.profiles
   for (const [index, profile] of profiles.entries()) {
     if (!profile.enabled || !profile.applicationIds.includes(applicationId)) {
       continue

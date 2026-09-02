@@ -791,6 +791,18 @@ class OpenXrLayer {
     };
     std::optional<PivotOrigin> pivotxr_origin_;
     bool pivotxr_origin_capture_pending_{false};
+    // Head-controlled mouse cursor state (mirrors XRNeckSafer's MouseCursorService).
+    double head_cursor_last_yaw_radians_{0.0};
+    double head_cursor_last_pitch_radians_{0.0};
+    double head_cursor_smoothed_delta_yaw_{0.0};
+    double head_cursor_smoothed_delta_pitch_{0.0};
+    bool head_cursor_has_last_pose_{false};
+    bool head_cursor_toggle_enabled_{true};
+    bool head_cursor_toggle_binding_was_down_{false};
+    bool head_cursor_binding_down_cached_{false};
+    std::optional<std::chrono::steady_clock::time_point> head_cursor_binding_last_poll_time_;
+    // SendInput function pointer (loaded lazily).
+    PFN_xrVoidFunction head_cursor_send_input_{nullptr};
     bool depthxr_toggle_enabled_{true};
     bool depthxr_toggle_binding_was_down_{false};
     std::optional<std::chrono::steady_clock::time_point> pivotxr_binding_last_poll_time_;

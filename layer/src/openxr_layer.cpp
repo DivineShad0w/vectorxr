@@ -12,6 +12,16 @@
 #include <string_view>
 #include <vector>
 
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
+#endif
+
 #include <d3d11.h>
 #include <d3d11_1.h>
 #include <d3dcompiler.h>
@@ -39,6 +49,23 @@
 
 namespace depthxr {
 namespace {
+
+// ── Head-controlled mouse cursor (SendInput) ──────────────────────────────
+#if defined(_WIN32)
+void SendHeadCursorMovement(int move_x, int move_y) {
+    INPUT input{};
+    input.type = INPUT_MOUSE;
+    input.mi.dx = move_x;
+    input.mi.dy = move_y;
+    input.mi.dwFlags = MOUSEEVENTF_MOVE;
+    SendInput(1, &input, sizeof(INPUT));
+}
+#else
+void SendHeadCursorMovement(int /*move_x*/, int /*move_y*/) {
+    // No-op on non-Windows
+}
+#endif
+// ── End head cursor ───────────────────────────────────────────────────────
 
 bool NearlyEqual(double lhs, double rhs) {
     return std::abs(lhs - rhs) < 0.0001;
@@ -2029,6 +2056,10 @@ XrResult OpenXrLayer::OnInstanceCreated(const XrInstanceCreateInfo* create_info,
     }
     RefreshResolvedSettings();
     logger_.Info("Active log file: " + logger_.ActiveLogPath().string());
+    logger_.Info("HeadCursor: enabled=" + std::to_string(resolved_settings_.head_cursor.enabled) +
+                 " deadzone=" + std::to_string(resolved_settings_.head_cursor.deadzone_degrees) +
+                 " yawSens=" + std::to_string(resolved_settings_.head_cursor.yaw_sensitivity) +
+                 " yawMult=" + std::to_string(resolved_settings_.head_cursor.yaw_multiplier));
 
     // Hand ongoing config hot-reload to the watcher thread now that the initial
     // load and config_path_ are established. From here the render hot path never
@@ -7601,6 +7632,137 @@ XrResult OpenXrLayer::LocateViews(XrSession session,
         ResetPivotPoseDeltaContinuityState();
     }
 
+    // ── Head-controlled mouse cursor ──────────────────────────────────────
+    // Reads HMD yaw/pitch deltas from the first view pose and sends relative
+    // mouse movement via Windows SendInput (mirrors XRNeckSafer's MouseCursorService).
+    if (resolved_settings_.head_cursor.enabled && views && count > 0) {
+        // Toggle binding poll (same pattern as DepthXR)
+        const auto now = std::chrono::steady_clock::now();
+        const bool hc_first_poll = !head_cursor_binding_last_poll_time_.has_value();
+        if (hc_first_poll || now - *head_cursor_binding_last_poll_time_ >= kInputBindingPollInterval) {
+            head_cursor_binding_last_poll_time_ = now;
+            const auto& binding = resolved_settings_.head_cursor.toggle_binding;
+            if (binding.type != InputBindingType::None) {
+                head_cursor_binding_down_cached_ = PollInputBindingDown(binding);
+            }
+        }
+        const bool binding_down = head_cursor_binding_down_cached_;
+        if (hc_first_poll) {
+            head_cursor_toggle_binding_was_down_ = binding_down;
+        }
+        const bool was_pressed_this_call = binding_down && !head_cursor_toggle_binding_was_down_;
+        head_cursor_toggle_binding_was_down_ = binding_down;
+
+        if (was_pressed_this_call) {
+            // Toggle: flip the enabled state on each press
+            head_cursor_toggle_enabled_ = !head_cursor_toggle_enabled_;
+            logger_.Info(std::string("Head Cursor ") + (head_cursor_toggle_enabled_ ? "enabled" : "disabled") + " via " +
+                         BindingLabel(resolved_settings_.head_cursor.toggle_binding) + ".");
+            SoundPlayer::Instance().PlayTransition(resolved_settings_.head_cursor.toggle_binding.sound,
+                                                   head_cursor_toggle_enabled_,
+                                                   dll_directory_,
+                                                   resolved_settings_.core.sound_volume,
+                                                   L"hc-on.wav", L"hc-off.wav");
+        }
+
+        // Only apply head cursor when toggle allows it
+        if (!head_cursor_toggle_enabled_) {
+            head_cursor_last_yaw_radians_ = ExtractPoseYawRadians(views[0].pose);
+            head_cursor_last_pitch_radians_ = ExtractPosePitchRadians(views[0].pose);
+            head_cursor_has_last_pose_ = true;
+        } else {
+            // Debug: log on first frame
+            static bool hc_logged = false;
+            if (!hc_logged) {
+                hc_logged = true;
+                logger_.Info("HeadCursor ENABLED: enabled=" + std::to_string(resolved_settings_.head_cursor.enabled) +
+                             " deadzone=" + std::to_string(resolved_settings_.head_cursor.deadzone_degrees) +
+                             " yawSens=" + std::to_string(resolved_settings_.head_cursor.yaw_sensitivity) +
+                             " yawMult=" + std::to_string(resolved_settings_.head_cursor.yaw_multiplier) +
+                             " maxMove=" + std::to_string(resolved_settings_.head_cursor.max_move_per_frame));
+            }
+        // Extract raw yaw/pitch from the first view's orientation
+        double current_yaw = ExtractPoseYawRadians(views[0].pose);
+        double current_pitch = ExtractPosePitchRadians(views[0].pose);
+
+        if (head_cursor_has_last_pose_) {
+            double delta_yaw = current_yaw - head_cursor_last_yaw_radians_;
+            double delta_pitch = current_pitch - head_cursor_last_pitch_radians_;
+
+            // Handle wrap-around
+            constexpr double kPi = 3.14159265358979323846;
+            if (delta_yaw > kPi) {
+                delta_yaw -= 2.0 * kPi;
+            }
+            if (delta_yaw < -kPi) {
+                delta_yaw += 2.0 * kPi;
+            }
+            if (delta_pitch > kPi) {
+                delta_pitch -= 2.0 * kPi;
+            }
+            if (delta_pitch < -kPi) {
+                delta_pitch += 2.0 * kPi;
+            }
+
+            // Deadzone (in degrees)
+            double deadzone = resolved_settings_.head_cursor.deadzone_degrees * kPi / 180.0;
+            if (std::abs(delta_yaw) < deadzone && std::abs(delta_pitch) < deadzone) {
+                // Update last values even in deadzone
+                head_cursor_last_yaw_radians_ = current_yaw;
+                head_cursor_last_pitch_radians_ = current_pitch;
+            } else {
+                // EMA smoothing (alpha=0.7, same as XRNeckSafer)
+                constexpr double kEmaAlpha = 0.7;
+                head_cursor_smoothed_delta_yaw_ =
+                    head_cursor_smoothed_delta_yaw_ * kEmaAlpha + delta_yaw * (1.0 - kEmaAlpha);
+                head_cursor_smoothed_delta_pitch_ =
+                    head_cursor_smoothed_delta_pitch_ * kEmaAlpha + delta_pitch * (1.0 - kEmaAlpha);
+
+                // Scale by sensitivity and multiplier
+                double scaled_yaw = head_cursor_smoothed_delta_yaw_ *
+                    resolved_settings_.head_cursor.yaw_sensitivity *
+                    resolved_settings_.head_cursor.yaw_multiplier;
+                double scaled_pitch = head_cursor_smoothed_delta_pitch_ *
+                    resolved_settings_.head_cursor.pitch_sensitivity *
+                    resolved_settings_.head_cursor.pitch_multiplier;
+
+                // Convert to pixels (radians → degrees → pixels)
+                int move_x = static_cast<int>(std::round(scaled_yaw * 180.0 / kPi));
+                int move_y = static_cast<int>(std::round(scaled_pitch * 180.0 / kPi));
+
+                // Clamp max movement per frame
+                int max_move = resolved_settings_.head_cursor.max_move_per_frame;
+                if (move_x > max_move) {
+                    move_x = max_move;
+                } else if (move_x < -max_move) {
+                    move_x = -max_move;
+                }
+                if (move_y > max_move) {
+                    move_y = max_move;
+                } else if (move_y < -max_move) {
+                    move_y = -max_move;
+                }
+
+                // Send mouse movement via Windows SendInput (invert both axes for correct mapping)
+                if (move_x != 0 || move_y != 0) {
+                    SendHeadCursorMovement(-move_x, -move_y);
+                }
+            }
+        } else {
+            head_cursor_has_last_pose_ = true;
+        }
+
+        head_cursor_last_yaw_radians_ = current_yaw;
+        head_cursor_last_pitch_radians_ = current_pitch;
+    }
+    } else {
+        // Reset smoothing when disabled
+        head_cursor_smoothed_delta_yaw_ = 0.0;
+        head_cursor_smoothed_delta_pitch_ = 0.0;
+        head_cursor_has_last_pose_ = false;
+    }
+    // ── End head cursor ───────────────────────────────────────────────────
+
     const bool depth_geometry_adjusted =
         depthxr_active &&
         (!NearlyEqual(resolved_settings_.depthxr.stereo_boost, 1.0) ||
@@ -8103,6 +8265,12 @@ void OpenXrLayer::RefreshResolvedSettings() {
 
     const ResolvedRuntimeConfig previous = resolved_settings_;
     resolved_settings_ = ResolveRuntimeConfig(config_, current_exe_name_);
+
+    // Reset toggle state when settings change
+    head_cursor_toggle_enabled_ = !resolved_settings_.head_cursor.inverted_toggle;
+    head_cursor_binding_down_cached_ = false;
+    head_cursor_toggle_binding_was_down_ = false;
+    head_cursor_binding_last_poll_time_.reset();
 
     const bool configured_core_active = resolved_settings_.core.enabled;
     const bool configured_quadviews_active =

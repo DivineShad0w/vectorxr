@@ -8,7 +8,6 @@ use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
-
 mod input_devices;
 mod openxr_layers;
 
@@ -671,6 +670,88 @@ impl Default for TurboModuleConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct HeadCursorSettings {
+    #[serde(default = "default_head_cursor_yaw_sensitivity")]
+    yaw_sensitivity: f64,
+    #[serde(default = "default_head_cursor_pitch_sensitivity")]
+    pitch_sensitivity: f64,
+    #[serde(default = "default_head_cursor_yaw_multiplier")]
+    yaw_multiplier: f64,
+    #[serde(default = "default_head_cursor_pitch_multiplier")]
+    pitch_multiplier: f64,
+    #[serde(default = "default_head_cursor_deadzone", rename = "deadzoneDegrees", alias = "deadzone")]
+    deadzone_degrees: f64,
+    #[serde(default = "default_head_cursor_max_move")]
+    max_move_per_frame: i32,
+    #[serde(default = "default_head_cursor_toggle_binding")]
+    toggle_binding: InputBinding,
+    #[serde(default)]
+    inverted_toggle: bool,
+}
+
+impl Default for HeadCursorSettings {
+    fn default() -> Self {
+        Self {
+            yaw_sensitivity: default_head_cursor_yaw_sensitivity(),
+            pitch_sensitivity: default_head_cursor_pitch_sensitivity(),
+            yaw_multiplier: default_head_cursor_yaw_multiplier(),
+            pitch_multiplier: default_head_cursor_pitch_multiplier(),
+            deadzone_degrees: default_head_cursor_deadzone(),
+            max_move_per_frame: default_head_cursor_max_move(),
+            toggle_binding: default_head_cursor_toggle_binding(),
+            inverted_toggle: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct HeadCursorProfileConfig {
+    #[serde(default)]
+    name: String,
+    #[serde(default = "default_true")]
+    enabled: bool,
+    #[serde(default)]
+    application_ids: Vec<String>,
+    #[serde(default)]
+    settings: HeadCursorSettings,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct HeadCursorModuleConfig {
+    #[serde(default)]
+    enabled: bool,
+    #[serde(default)]
+    defaults: HeadCursorSettings,
+    #[serde(default)]
+    profiles: Vec<HeadCursorProfileConfig>,
+}
+
+fn default_head_cursor_yaw_sensitivity() -> f64 {
+    1.0
+}
+fn default_head_cursor_pitch_sensitivity() -> f64 {
+    1.0
+}
+fn default_head_cursor_yaw_multiplier() -> f64 {
+    2.0
+}
+fn default_head_cursor_pitch_multiplier() -> f64 {
+    2.0
+}
+fn default_head_cursor_deadzone() -> f64 {
+    0.5
+}
+fn default_head_cursor_max_move() -> i32 {
+    200
+}
+fn default_head_cursor_toggle_binding() -> InputBinding {
+    InputBinding::None
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 struct VectorXRModules {
@@ -682,6 +763,8 @@ struct VectorXRModules {
     quadviews: QuadViewsModuleConfig,
     #[serde(default)]
     turbo: TurboModuleConfig,
+    #[serde(default)]
+    head_cursor: HeadCursorModuleConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -410,6 +410,37 @@ struct TurboResolvedSettings {
     InputBinding metrics_binding;
 };
 
+// Head-controlled mouse cursor: reads HMD yaw/pitch deltas and sends
+// relative mouse movement through Windows SendInput.
+struct HeadCursorSettings {
+    bool enabled{false};
+    double yaw_sensitivity{1.0};
+    double pitch_sensitivity{1.0};
+    double yaw_multiplier{2.0};
+    double pitch_multiplier{2.0};
+    double deadzone_degrees{0.5};
+    int max_move_per_frame{200};
+    InputBinding toggle_binding;
+    bool inverted_toggle{false};
+};
+
+struct HeadCursorProfile {
+    std::string name;
+    std::vector<std::string> application_ids;
+    bool enabled{true};
+    ProfileMode mode{ProfileMode::Custom};
+    HeadCursorSettings settings;
+};
+
+struct HeadCursorModuleConfig {
+    bool enabled{false};
+    HeadCursorSettings defaults;
+    std::vector<HeadCursorProfile> profiles;
+};
+
+struct HeadCursorResolvedSettings : HeadCursorSettings {
+};
+
 struct ConfigDocument {
     int version{3};
     CoreSettings core;
@@ -418,6 +449,7 @@ struct ConfigDocument {
     PivotXrModuleConfig pivotxr;
     QuadViewsModuleConfig quadviews;
     TurboModuleConfig turbo;
+    HeadCursorModuleConfig head_cursor;
 };
 
 struct ResolvedRuntimeConfig {
@@ -427,6 +459,7 @@ struct ResolvedRuntimeConfig {
     PivotXrResolvedSettings pivotxr;
     QuadViewsResolvedSettings quadviews;
     TurboResolvedSettings turbo;
+    HeadCursorResolvedSettings head_cursor;
 };
 
 const char* ToString(LogLevel level);
