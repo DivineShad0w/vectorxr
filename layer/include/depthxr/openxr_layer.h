@@ -1106,6 +1106,19 @@ class OpenXrLayer {
     bool has_logged_mono_primary_view_contract_{false};
     bool has_logged_mono_primary_frame_duplicated_{false};
     bool has_logged_mono_primary_unexpected_view_count_{false};
+    // Bounded per-frame trace for the primary single-view contract: MSFS
+    // keeps its UI thread alive while its render thread stops submitting
+    // layers, and the topology log dedupes empty EndFrames, so without
+    // this the hang point is invisible. Counted per process, logged
+    // densely at session start then every 100th call.
+    std::atomic<uint32_t> mono_primary_wait_frame_calls_{0};
+    std::atomic<uint32_t> mono_primary_begin_frame_calls_{0};
+    std::atomic<uint32_t> mono_primary_locate_views_calls_{0};
+    std::atomic<uint32_t> mono_primary_locate_views_done_calls_{0};
+    std::atomic<uint32_t> mono_primary_end_frame_calls_{0};
+    std::atomic<uint32_t> mono_primary_acquire_swapchain_calls_{0};
+    void TraceMonoPrimaryCall(std::string_view stage, std::atomic<uint32_t>& counter,
+                              std::string_view detail = {});
     XrSession active_session_{XR_NULL_HANDLE};
     XrSpace internal_local_space_{XR_NULL_HANDLE};
     XrSpace internal_view_space_{XR_NULL_HANDLE};

@@ -3384,6 +3384,9 @@ XrResult OpenXrLayer::EnumerateSwapchainImages(XrSwapchain swapchain,
 XrResult OpenXrLayer::AcquireSwapchainImage(XrSwapchain swapchain,
                                             const XrSwapchainImageAcquireInfo* acquire_info,
                                             uint32_t* index) {
+    if (IsMonoPrimaryActive()) {
+        TraceMonoPrimaryCall("acquire_swapchain_image", mono_primary_acquire_swapchain_calls_);
+    }
     {
         std::scoped_lock lock(mutex_);
         auto it = tracked_swapchains_.find(swapchain);
@@ -4703,6 +4706,9 @@ XrResult OpenXrLayer::WaitFrame(XrSession session,
         frame_state->type != XR_TYPE_FRAME_STATE) {
         return XR_ERROR_VALIDATION_FAILURE;
     }
+    if (IsMonoPrimaryActive()) {
+        TraceMonoPrimaryCall("wait_frame", mono_primary_wait_frame_calls_);
+    }
     if (!turbo_frame_interception_required_.load(std::memory_order_acquire)) {
         if (!frame_pacing_debug_enabled_.load(std::memory_order_relaxed)) {
             return next_wait_frame_(session, frame_wait_info, frame_state);
@@ -4949,6 +4955,9 @@ XrResult OpenXrLayer::WaitFrame(XrSession session,
 XrResult OpenXrLayer::BeginFrame(XrSession session, const XrFrameBeginInfo* frame_begin_info) {
     if (frame_begin_info && frame_begin_info->type != XR_TYPE_FRAME_BEGIN_INFO) {
         return XR_ERROR_VALIDATION_FAILURE;
+    }
+    if (IsMonoPrimaryActive()) {
+        TraceMonoPrimaryCall("begin_frame", mono_primary_begin_frame_calls_);
     }
     {
         std::scoped_lock lock(mutex_);
@@ -6571,6 +6580,11 @@ XrResult OpenXrLayer::EndFrame(XrSession session, const XrFrameEndInfo* frame_en
     if (!frame_end_info || frame_end_info->type != XR_TYPE_FRAME_END_INFO) {
         return XR_ERROR_VALIDATION_FAILURE;
     }
+    if (IsMonoPrimaryActive()) {
+        std::ostringstream trace_detail;
+        trace_detail << "layerCount=" << frame_end_info->layerCount;
+        TraceMonoPrimaryCall("end_frame", mono_primary_end_frame_calls_, trace_detail.str());
+    }
 
     // Hang forensics: if a log ends between these two markers, a thread is
     // parked inside a runtime call while holding mutex_.
@@ -7450,6 +7464,9 @@ XrResult OpenXrLayer::LocateViews(XrSession session,
                                   uint32_t view_capacity_input,
                                   uint32_t* view_count_output,
                                   XrView* views) {
+    if (IsMonoPrimaryActive()) {
+        TraceMonoPrimaryCall("locate_views_enter", mono_primary_locate_views_calls_);
+    }
     bool synthesized_quad_views = false;
     QuadViewsGazeDiagnostic gaze_diagnostic{};
     const XrResult result = LocateRuntimeViews(
@@ -7461,6 +7478,15 @@ XrResult OpenXrLayer::LocateViews(XrSession session,
         views,
         &synthesized_quad_views,
         &gaze_diagnostic);
+
+    if (IsMonoPrimaryActive()) {
+        std::ostringstream trace_detail;
+        trace_detail << "result=" << result
+                     << " views=" << (view_count_output ? std::to_string(*view_count_output)
+                                                       : std::string("?"));
+        TraceMonoPrimaryCall("locate_views_done", mono_primary_locate_views_done_calls_,
+                             trace_detail.str());
+    }
 
     if (XR_FAILED(result)) {
         return result;
@@ -8933,6 +8959,19 @@ bool OpenXrLayer::IsMonoPrimaryActive() const {
     // Same latching discipline as quadviews: the single-view contract is
     // fixed at session creation and survives config reloads until teardown.
     return mono_primary_session_active_.value_or(configured_active);
+}
+
+void OpenXrLayer::TraceMonoPrimaryCall(std::string_view stage, std::atomic<uint32_t>& counter,
+                                       std::string_view detail) {
+    const uint32_t call = ++counter;
+    if (call <= 8 || call % 100 == 0) {
+        std::string line = std::string("MonoVR primary trace: ") + std::string(stage) +
+                           " call #" + std::to_string(call);
+        if (!detail.empty()) {
+            line += " " + std::string(detail);
+        }
+        logger_.Info(line);
+    }
 }
 
 bool OpenXrLayer::IsVarjoCompatibleQuadviewsEligible() {
