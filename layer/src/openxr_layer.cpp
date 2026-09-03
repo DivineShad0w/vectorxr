@@ -2827,13 +2827,28 @@ XrResult OpenXrLayer::EnumerateViewConfigurationViews(XrInstance instance,
         if (runtime_view_count == 0 || !views || view_capacity_input == 0) {
             return XR_SUCCESS;
         }
+        // Populate from a full-capacity query: real runtimes and
+        // intermediate layer stacks (e.g. Virtual Desktop's quad-view
+        // stack in front of the runtime) hold the runtime's stereo view
+        // count and answer a partial (capacity < count) populate with
+        // XR_ERROR_SIZE_INSUFFICIENT. Fetch the full set into a temp
+        // buffer and hand the application only the first view — the same
+        // pattern the synthesized quad views use below.
+        std::vector<XrViewConfigurationView> downstream_views(runtime_view_count);
+        for (XrViewConfigurationView& view : downstream_views) {
+            view = {XR_TYPE_VIEW_CONFIGURATION_VIEW};
+        }
         result = next_enumerate_view_configuration_views_(
-            instance, system_id, view_configuration_type, 1, &runtime_view_count, views);
-        if (XR_FAILED(result)) {
+            instance, system_id, view_configuration_type, static_cast<uint32_t>(downstream_views.size()),
+            &runtime_view_count, downstream_views.data());
+        if (XR_FAILED(result) || runtime_view_count == 0) {
             logger_.Error("xrEnumerateViewConfigurationViews failed downstream (primary mono populate): result=" +
                           std::to_string(static_cast<int>(result)));
             return result;
         }
+        void* app_next = views[0].next;
+        views[0] = downstream_views[0];
+        views[0].next = app_next;
         if (!has_logged_mono_primary_view_contract_) {
             has_logged_mono_primary_view_contract_ = true;
             logger_.Info("MonoVR primary: exposing 1 of the runtime's " +
@@ -10211,6 +10226,71 @@ XrResult OpenXrLayer::LocateRuntimeViews(XrSession session,
             downstream_locate_info.next = stripped_next;
             downstream_view_locate_info = &downstream_locate_info;
         }
+    }
+
+    // Primary mono single-view contract: the application renders one
+    // viewport per frame and locates exactly one view — often with
+    // capacity 1 — while the downstream (a real runtime or an
+    // intermediate layer stack) holds the full stereo set and rejects a
+    // partial locate with XR_ERROR_SIZE_INSUFFICIENT. Locate the full set
+    // into a temp buffer and hand the application only the first view,
+    // the same pattern the synthesized quad views use below.
+    if (IsMonoPrimaryActive() && view_locate_info &&
+        view_locate_info->viewConfigurationType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) {
+        XrViewLocateInfo mono_locate_info = *downstream_view_locate_info;
+        XrViewState temp_view_state{XR_TYPE_VIEW_STATE};
+        XrViewState* downstream_view_state = view_state ? &temp_view_state : nullptr;
+        uint32_t stereo_count = 0;
+        const bool diag = TurboSequencedDebugTick();
+        if (diag) {
+            logger_.Debug("Turbo-diag: mono-primary xrLocateViews starting (no lock held).");
+        }
+        const XrResult result =
+            next_locate_views_(session, &mono_locate_info, downstream_view_state, 0, &stereo_count, nullptr);
+        if (diag) {
+            logger_.Debug("Turbo-diag: mono-primary xrLocateViews completed.");
+        }
+        if (XR_FAILED(result)) {
+            logger_.Error("xrLocateViews failed downstream (primary mono locate): result=" +
+                          std::to_string(static_cast<int>(result)));
+            return result;
+        }
+        if (view_state) {
+            void* app_next = view_state->next;
+            *view_state = temp_view_state;
+            view_state->next = app_next;
+        }
+        if (stereo_count == 0) {
+            *view_count_output = 0;
+            return XR_SUCCESS;
+        }
+        if (!views) {
+            *view_count_output = 1;
+            return XR_SUCCESS;
+        }
+        if (view_capacity_input < 1) {
+            *view_count_output = 1;
+            return XR_ERROR_SIZE_INSUFFICIENT;
+        }
+        // Populate from the full downstream set into a temp buffer and hand
+        // the application only the first view.
+        std::vector<XrView> stereo_views(stereo_count, XrView{XR_TYPE_VIEW});
+        const XrResult populate_result = next_locate_views_(session,
+                                                            &mono_locate_info,
+                                                            downstream_view_state,
+                                                            static_cast<uint32_t>(stereo_views.size()),
+                                                            &stereo_count,
+                                                            stereo_views.data());
+        if (XR_FAILED(populate_result) || stereo_count == 0) {
+            logger_.Error("xrLocateViews failed downstream (primary mono populate): result=" +
+                          std::to_string(static_cast<int>(populate_result)));
+            return populate_result;
+        }
+        void* app_next = views[0].next;
+        views[0] = stereo_views[0];
+        views[0].next = app_next;
+        *view_count_output = 1;
+        return XR_SUCCESS;
     }
 
     if (!view_locate_info || !IsQuadViewConfiguration(view_locate_info->viewConfigurationType) ||
