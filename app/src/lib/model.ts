@@ -5,7 +5,7 @@ export type PivotResponseMode = 'continuous' | 'stepped'
 export type PivotStepGlideMode = 'instant' | 'glide'
 export type PivotProfileBehavior = 'enhancedMotion' | 'snapViews'
 export type QuadViewsTrackingMode = 'head' | 'eye'
-export type AppTab = 'home' | 'core' | 'registry' | 'layers' | 'about' | 'depthxr' | 'pivotxr' | 'quadviews' | 'turbo' | 'headCursor'
+export type AppTab = 'home' | 'core' | 'registry' | 'layers' | 'about' | 'depthxr' | 'pivotxr' | 'quadviews' | 'turbo' | 'headCursor' | 'monoVR'
 export const keyboardBindingKeyGroups = [
   {
     label: 'Function Keys',
@@ -321,6 +321,34 @@ export interface HeadCursorProfileConfig {
   settings: HeadCursorConfig
 }
 
+// Mono VR modes. Soft mirrors the first view onto the others in the layer
+// (comfort, no GPU savings — the app still renders per view). Primary makes
+// the application itself render a single viewport (one view, swapchain
+// arraySize 1); the layer duplicates the frame for the compositor, so the
+// savings are real. Primary is fixed per app session (restart to change).
+export type MonoVrMode = 'soft' | 'primary'
+
+// Mono VR: monoscopic rendering for comfort and (in primary mode) GPU savings.
+export interface MonoVrConfig {
+  enabled: boolean
+  toggleBinding: InputBinding
+  invertedToggle: boolean
+  mode: MonoVrMode
+}
+
+export interface MonoVrModuleConfig {
+  enabled: boolean
+  defaults: MonoVrConfig
+  profiles: MonoVrProfileConfig[]
+}
+
+export interface MonoVrProfileConfig {
+  name: string
+  enabled: boolean
+  applicationIds: string[]
+  settings: MonoVrConfig
+}
+
 // One row of the layer-written runtime-pacing.json sidecar: what Auto pacing
 // learned about a runtime. Read-only facts; user intent lives in the config.
 export interface RuntimePacingObservation {
@@ -378,6 +406,7 @@ export interface VectorXRConfig {
     quadviews: QuadViewsModuleConfig
     turbo: TurboModuleConfig
     headCursor?: HeadCursorModuleConfig
+    monoVR?: MonoVrModuleConfig
   }
 }
 
@@ -713,6 +742,11 @@ export function defaultConfig(): VectorXRConfig {
         defaults: defaultHeadCursorConfig(),
         profiles: [],
       },
+      monoVR: {
+        enabled: false,
+        defaults: defaultMonoVrConfig(),
+        profiles: [],
+      },
     },
   }
 }
@@ -796,6 +830,27 @@ export function createHeadCursorProfile(
   defaultSettings: HeadCursorConfig,
   applicationIds: string[] = [],
 ): HeadCursorProfileConfig {
+  return {
+    name: 'New Profile',
+    enabled: true,
+    applicationIds,
+    settings: { ...defaultSettings },
+  }
+}
+
+export function defaultMonoVrConfig(): MonoVrConfig {
+  return {
+    enabled: false,
+    toggleBinding: defaultNoneBinding(),
+    invertedToggle: false,
+    mode: 'soft',
+  }
+}
+
+export function createMonoVrProfile(
+  defaultSettings: MonoVrConfig,
+  applicationIds: string[] = [],
+): MonoVrProfileConfig {
   return {
     name: 'New Profile',
     enabled: true,
@@ -961,6 +1016,10 @@ function normalizeQuadViewsTrackingMode(value: unknown, fallback: QuadViewsTrack
   return value === 'eye' || value === 'head' ? value : fallback
 }
 
+function normalizeMonoVrMode(value: unknown, fallback: MonoVrMode): MonoVrMode {
+  return value === 'primary' ? 'primary' : fallback
+}
+
 function normalizeQuadViewsSettings(value: unknown, fallback: QuadViewsSettings): QuadViewsSettings {
   const source = isRecord(value) ? value : {}
 
@@ -992,6 +1051,17 @@ function normalizeHeadCursorSettings(value: unknown, fallback: HeadCursorConfig)
     maxMovePerFrame: normalizeNumber(source.maxMovePerFrame, fallback.maxMovePerFrame),
     toggleBinding: normalizeInputBinding(source.toggleBinding, fallback.toggleBinding),
     invertedToggle: normalizeBoolean(source.invertedToggle, fallback.invertedToggle),
+  }
+}
+
+function normalizeMonoVrSettings(value: unknown, fallback: MonoVrConfig): MonoVrConfig {
+  const source = isRecord(value) ? value : {}
+
+  return {
+    enabled: normalizeBoolean(source.enabled, fallback.enabled),
+    toggleBinding: normalizeInputBinding(source.toggleBinding, fallback.toggleBinding),
+    invertedToggle: normalizeBoolean(source.invertedToggle, fallback.invertedToggle),
+    mode: normalizeMonoVrMode(source.mode, fallback.mode),
   }
 }
 
@@ -1473,11 +1543,14 @@ function normalizeVectorXRConfig(value: unknown): VectorXRConfig {
   const quadviews = isRecord(modules.quadviews) ? modules.quadviews : {}
   const turbo = isRecord(modules.turbo) ? modules.turbo : {}
   const headCursor = isRecord(modules.headCursor) ? modules.headCursor : {}
+  // Older app builds wrote the camelCase "monoVr" key; accept both.
+  const monoVR = isRecord(modules.monoVR) ? modules.monoVR : isRecord(modules.monoVr) ? modules.monoVr : {}
   const depthProfileValues = Array.isArray(depthxr.profiles) ? depthxr.profiles : []
   const pivotProfileValues = Array.isArray(pivotxr.profiles) ? pivotxr.profiles : []
   const quadViewsProfileValues = Array.isArray(quadviews.profiles) ? quadviews.profiles : []
   const turboProfileValues = Array.isArray(turbo.profiles) ? turbo.profiles : []
   const headCursorProfileValues = Array.isArray(headCursor.profiles) ? headCursor.profiles : []
+  const monoVRProfileValues = Array.isArray(monoVR.profiles) ? monoVR.profiles : []
   const applicationValues = Array.isArray(source.applications) ? source.applications : []
   const applications: RegisteredApplication[] = []
 
@@ -1654,6 +1727,22 @@ function normalizeVectorXRConfig(value: unknown): VectorXRConfig {
           }
         }),
       },
+      monoVR: {
+        enabled: normalizeBoolean(monoVR.enabled, fallback.modules.monoVR!.enabled),
+        defaults: normalizeMonoVrSettings(monoVR.defaults, fallback.modules.monoVR!.defaults),
+        profiles: monoVRProfileValues.map((profileValue) => {
+          const profile = isRecord(profileValue) ? profileValue : {}
+          const settings = normalizeMonoVrSettings(profile.settings, fallback.modules.monoVR!.defaults)
+          const applicationIds = applicationIdsFromProfile(profile, applications)
+
+          return {
+            name: normalizeString(profile.name, 'New Profile'),
+            enabled: normalizeBoolean(profile.enabled, true),
+            applicationIds,
+            settings,
+          }
+        }),
+      },
     },
   }
 }
@@ -1670,7 +1759,7 @@ export function cloneConfig(config: VectorXRConfig): VectorXRConfig {
   return JSON.parse(JSON.stringify(config)) as VectorXRConfig
 }
 
-export type ModuleId = 'depthxr' | 'pivotxr' | 'quadviews' | 'turbo' | 'headCursor'
+export type ModuleId = 'depthxr' | 'pivotxr' | 'quadviews' | 'turbo' | 'headCursor' | 'monoVR'
 
 export const moduleLabels: Record<ModuleId, string> = {
   depthxr: 'Depth',
@@ -1678,6 +1767,7 @@ export const moduleLabels: Record<ModuleId, string> = {
   quadviews: 'Quadviews',
   turbo: 'Turbo',
   headCursor: 'Head Cursor',
+  monoVR: 'Mono VR',
 }
 
 export interface ModuleApplicationState {
@@ -1690,7 +1780,7 @@ export interface ModuleApplicationState {
 export function moduleStateForApplication(config: VectorXRConfig, moduleId: ModuleId, applicationId: string): ModuleApplicationState {
   const module = config.modules[moduleId]!
 
-  const profiles: Array<DepthXRProfileConfig | PivotXRProfileConfig | QuadViewsProfileConfig | TurboProfileConfig | HeadCursorProfileConfig> = module.profiles
+  const profiles: Array<DepthXRProfileConfig | PivotXRProfileConfig | QuadViewsProfileConfig | TurboProfileConfig | HeadCursorProfileConfig | MonoVrProfileConfig> = module.profiles
   for (const [index, profile] of profiles.entries()) {
     if (!profile.enabled || !profile.applicationIds.includes(applicationId)) {
       continue

@@ -13,7 +13,7 @@ import {
   type ActiveRuntimeInfo,
   type SeenApplication,
 } from '../lib/commands'
-import { cloneConfig, createApplication, createHeadCursorProfile, createProfile, createPivotProfile, createQuadViewsProfile, createTurboProfile, defaultConfig } from '../lib/model'
+import { cloneConfig, createApplication, createHeadCursorProfile, createMonoVrProfile, createProfile, createPivotProfile, createQuadViewsProfile, createTurboProfile, defaultConfig } from '../lib/model'
 import type { AppTab, ModuleId, RuntimePacingObservation, TurboMetricsSession, VectorXRConfig } from '../lib/model'
 
 interface StoreState {
@@ -302,6 +302,29 @@ export function useConfigStore() {
     }
   }
 
+  function addMonoVrProfile() {
+    const defaultApplicationId = state.config.applications[0]?.id
+    state.config.modules.monoVR!.profiles.push(
+      createMonoVrProfile(state.config.modules.monoVR!.defaults, defaultApplicationId ? [defaultApplicationId] : []),
+    )
+  }
+
+  function removeMonoVrProfile(index: number) {
+    state.config.modules.monoVR!.profiles.splice(index, 1)
+  }
+
+  function syncMonoVrProfileName(index: number) {
+    const profile = state.config.modules.monoVR!.profiles[index]
+    if (!profile) {
+      return
+    }
+
+    if (!profile.name.trim() || profile.name === 'New Profile') {
+      const firstApplication = state.config.applications.find((application) => application.id === profile.applicationIds[0])
+      profile.name = firstApplication?.name || 'New Profile'
+    }
+  }
+
   function addTurboProfile() {
     const defaultApplicationId = state.config.applications[0]?.id
     state.config.modules.turbo.profiles.push(createTurboProfile(defaultApplicationId ? [defaultApplicationId] : []))
@@ -350,6 +373,9 @@ export function useConfigStore() {
     } else if (moduleId === 'headCursor') {
       state.config.modules.headCursor!.profiles.push(createHeadCursorProfile(state.config.modules.headCursor!.defaults, applicationIds))
       syncHeadCursorProfileName(state.config.modules.headCursor!.profiles.length - 1)
+    } else if (moduleId === 'monoVR') {
+      state.config.modules.monoVR!.profiles.push(createMonoVrProfile(state.config.modules.monoVR!.defaults, applicationIds))
+      syncMonoVrProfileName(state.config.modules.monoVR!.profiles.length - 1)
     } else {
       state.config.modules.quadviews.profiles.push(createQuadViewsProfile(state.config.modules.quadviews.defaults, applicationIds))
       syncQuadViewsProfileName(state.config.modules.quadviews.profiles.length - 1)
@@ -401,6 +427,9 @@ export function useConfigStore() {
     for (const profile of state.config.modules.headCursor!.profiles) {
       profile.applicationIds = profile.applicationIds.filter((id) => id !== application.id)
     }
+    for (const profile of state.config.modules.monoVR!.profiles) {
+      profile.applicationIds = profile.applicationIds.filter((id) => id !== application.id)
+    }
   }
 
   return {
@@ -430,6 +459,9 @@ export function useConfigStore() {
     addHeadCursorProfile,
     removeHeadCursorProfile,
     syncHeadCursorProfileName,
+    addMonoVrProfile,
+    removeMonoVrProfile,
+    syncMonoVrProfileName,
     addTurboProfile,
     removeTurboProfile,
     syncTurboProfileName,

@@ -246,6 +246,30 @@ std::optional<QuadViewsTrackingMode> ParseQuadViewsTrackingMode(const std::strin
     return std::nullopt;
 }
 
+const char* ToString(MonoVrMode mode) {
+    switch (mode) {
+    case MonoVrMode::Soft:
+        return "soft";
+    case MonoVrMode::Primary:
+        return "primary";
+    default:
+        return "soft";
+    }
+}
+
+std::optional<MonoVrMode> ParseMonoVrMode(const std::string& value) {
+    const std::string normalized = NormalizeValue(value);
+
+    if (normalized == "soft") {
+        return MonoVrMode::Soft;
+    }
+    if (normalized == "primary") {
+        return MonoVrMode::Primary;
+    }
+
+    return std::nullopt;
+}
+
 const char* ToString(ProfileMode mode) {
     switch (mode) {
     case ProfileMode::Custom:

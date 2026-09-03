@@ -2060,6 +2060,12 @@ XrResult OpenXrLayer::OnInstanceCreated(const XrInstanceCreateInfo* create_info,
                  " deadzone=" + std::to_string(resolved_settings_.head_cursor.deadzone_degrees) +
                  " yawSens=" + std::to_string(resolved_settings_.head_cursor.yaw_sensitivity) +
                  " yawMult=" + std::to_string(resolved_settings_.head_cursor.yaw_multiplier));
+    if (resolved_settings_.mono_vr.enabled && resolved_settings_.mono_vr.mode == MonoVrMode::Primary) {
+        logger_.Info("MonoVR: enabled=1 (primary mono: app renders one view, layer duplicates it at EndFrame)");
+    } else {
+        logger_.Info("MonoVR: enabled=" + std::to_string(resolved_settings_.mono_vr.enabled) +
+                     " (soft mono: mirrors first view onto the rest, no GPU savings)");
+    }
 
     // Hand ongoing config hot-reload to the watcher thread now that the initial
     // load and config_path_ are established. From here the render hot path never
@@ -2220,6 +2226,14 @@ XrResult OpenXrLayer::CreateSession(XrInstance instance,
     ReloadConfigIfNeeded();
     RefreshResolvedSettings();
     quadviews_session_active_ = resolved_settings_.core.enabled && resolved_settings_.quadviews.enabled;
+    mono_primary_session_active_ =
+        resolved_settings_.core.enabled && resolved_settings_.mono_vr.enabled &&
+        resolved_settings_.mono_vr.mode == MonoVrMode::Primary;
+    if (*mono_primary_session_active_) {
+        logger_.Info("MonoVR primary latched for this session: the application sees 1 view "
+                     "(swapchain arraySize 1, one viewport) and the layer duplicates each frame "
+                     "for the compositor. The contract holds until the application exits.");
+    }
     if (runtime_relay_root_.empty()) runtime_relay_root_ = ResolveRuntimeRelayRoot();
     runtime_relay_session_id_ = std::to_string(GetCurrentProcessId()) + "-" +
         std::to_string(RuntimeRelayUnixMilliseconds()) + "-" +
@@ -2790,6 +2804,45 @@ XrResult OpenXrLayer::EnumerateViewConfigurationViews(XrInstance instance,
     std::scoped_lock lock(mutex_);
     ReloadConfigIfNeeded();
     RefreshResolvedSettings();
+
+    if (IsMonoPrimaryActive() &&
+        view_configuration_type == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) {
+        // Primary mono single-view contract: expose only the runtime's first
+        // view so the application creates its swapchain with arraySize 1
+        // (one viewport — the actual GPU savings) and EndFrame duplicates the
+        // frame for the compositor. The per-view recommended size is the
+        // per-eye size, so each eye still receives a full-resolution image.
+        // Non-stereo configurations (e.g. quad-view headsets) pass through
+        // untouched: the mode is a no-op for them.
+        uint32_t runtime_view_count = 0;
+        XrResult result = next_enumerate_view_configuration_views_(
+            instance, system_id, view_configuration_type, 0, &runtime_view_count, nullptr);
+        if (XR_FAILED(result)) {
+            logger_.Error("xrEnumerateViewConfigurationViews failed downstream (primary mono count query): result=" +
+                          std::to_string(static_cast<int>(result)));
+            return result;
+        }
+        const uint32_t runtime_view_count_total = runtime_view_count;
+        *view_count_output = runtime_view_count > 0 ? 1 : 0;
+        if (runtime_view_count == 0 || !views || view_capacity_input == 0) {
+            return XR_SUCCESS;
+        }
+        result = next_enumerate_view_configuration_views_(
+            instance, system_id, view_configuration_type, 1, &runtime_view_count, views);
+        if (XR_FAILED(result)) {
+            logger_.Error("xrEnumerateViewConfigurationViews failed downstream (primary mono populate): result=" +
+                          std::to_string(static_cast<int>(result)));
+            return result;
+        }
+        if (!has_logged_mono_primary_view_contract_) {
+            has_logged_mono_primary_view_contract_ = true;
+            logger_.Info("MonoVR primary: exposing 1 of the runtime's " +
+                         std::to_string(runtime_view_count_total) +
+                         " views to the application (single-view contract, one viewport).");
+        }
+        return XR_SUCCESS;
+    }
+
     if (!IsQuadViewConfiguration(view_configuration_type) || !IsQuadViewsActive()) {
         return next_enumerate_view_configuration_views_(
             instance, system_id, view_configuration_type, view_capacity_input, view_count_output, views);
@@ -4965,6 +5018,51 @@ void OpenXrLayer::ObserveCompositionLayerTopology(const XrFrameEndInfo* frame_en
 XrResult OpenXrLayer::ForwardEndFrame(XrSession session,
                                       const XrFrameEndInfo* frame_end_info,
                                       std::unique_lock<std::mutex>& config_lock) {
+    // Mono VR primary contract: the application rendered one viewport for the
+    // whole frame (single-view session). Duplicate the projection layer's lone
+    // view onto a second so the runtime compositor receives a full stereo
+    // submission. The GPU savings are real: one viewport rendered per frame,
+    // not two — only the compositor copies the texture. This funnel covers
+    // both the identity fast path and the adjusted/turbo slow path, because
+    // every forwarded frame ends here.
+    std::vector<const XrCompositionLayerBaseHeader*> mono_primary_layers;
+    std::vector<std::vector<XrCompositionLayerProjectionView>> mono_primary_views;
+    std::vector<XrCompositionLayerProjection> mono_primary_projection_layers;
+    const XrFrameEndInfo* forward_frame_end_info = frame_end_info;
+    XrFrameEndInfo mono_primary_frame_end_info{};
+    if (frame_end_info && frame_end_info->layerCount > 0 && IsMonoPrimaryActive()) {
+        for (uint32_t i = 0; i < frame_end_info->layerCount; ++i) {
+            const XrCompositionLayerBaseHeader* base_header = frame_end_info->layers[i];
+            if (!base_header || base_header->type != XR_TYPE_COMPOSITION_LAYER_PROJECTION) {
+                mono_primary_layers.push_back(base_header);
+                continue;
+            }
+            const auto* projection_layer =
+                reinterpret_cast<const XrCompositionLayerProjection*>(base_header);
+            if (!projection_layer->views || projection_layer->viewCount != 1) {
+                // Not the single-view projection of the primary contract (or
+                // an empty layer): forward untouched.
+                mono_primary_layers.push_back(base_header);
+                continue;
+            }
+            mono_primary_views.emplace_back(projection_layer->views, projection_layer->views + 1);
+            mono_primary_views.back().push_back(mono_primary_views.back().front());
+            mono_primary_projection_layers.push_back(*projection_layer);
+            mono_primary_projection_layers.back().views = mono_primary_views.back().data();
+            mono_primary_projection_layers.back().viewCount = 2;
+            mono_primary_layers.push_back(
+                reinterpret_cast<const XrCompositionLayerBaseHeader*>(&mono_primary_projection_layers.back()));
+        }
+        mono_primary_frame_end_info = *frame_end_info;
+        mono_primary_frame_end_info.layerCount = static_cast<uint32_t>(mono_primary_layers.size());
+        mono_primary_frame_end_info.layers = mono_primary_layers.data();
+        forward_frame_end_info = &mono_primary_frame_end_info;
+        if (!has_logged_mono_primary_frame_duplicated_) {
+            has_logged_mono_primary_frame_duplicated_ = true;
+            logger_.Info("MonoVR primary: duplicating the single rendered view onto both eyes "
+                         "for the compositor (one viewport rendered per frame).");
+        }
+    }
     ObserveCompositionLayerTopology(frame_end_info);
     if (frame_pacing_debug_enabled_.load(std::memory_order_relaxed) && frame_end_info) {
         std::scoped_lock lock(turbo_mutex_);
@@ -4993,7 +5091,7 @@ XrResult OpenXrLayer::ForwardEndFrame(XrSession session,
             pacing_start = std::chrono::steady_clock::now();
         }
         config_lock.unlock();
-        const XrResult result = next_end_frame_(session, frame_end_info);
+        const XrResult result = next_end_frame_(session, forward_frame_end_info);
         if (XR_FAILED(result) && end_frame_error_log_budget_ > 0) {
             --end_frame_error_log_budget_;
             logger_.Error("Runtime xrEndFrame failed with " +
@@ -5341,7 +5439,7 @@ XrResult OpenXrLayer::ForwardEndFrame(XrSession session,
     if (diag_end) {
         logger_.Debug("Turbo-diag: runtime xrEndFrame starting.");
     }
-    const XrResult result = next_end_frame_(session, frame_end_info);
+    const XrResult result = next_end_frame_(session, forward_frame_end_info);
     const auto pacing_after_end = std::chrono::steady_clock::now();
     if (XR_FAILED(result) && end_frame_error_log_budget_ > 0) {
         // A failing runtime EndFrame shows as a silent black screen if the
@@ -7349,7 +7447,25 @@ XrResult OpenXrLayer::LocateViews(XrSession session,
         &synthesized_quad_views,
         &gaze_diagnostic);
 
-    if (XR_FAILED(result) || !views || !view_count_output) {
+    if (XR_FAILED(result)) {
+        return result;
+    }
+    // Primary mono single-view contract: the application renders exactly one
+    // viewport per frame, so every view count it observes must be one —
+    // including the count query (views == nullptr) that engines poll before
+    // deciding how many viewports to render this frame. Without this clamp
+    // the count query leaks the runtime's stereo count, the application
+    // renders two viewports, and the GPU savings vanish.
+    if (IsMonoPrimaryActive() && view_count_output && *view_count_output > 1) {
+        *view_count_output = 1;
+        if (view_capacity_input > 1 && !has_logged_mono_primary_unexpected_view_count_) {
+            has_logged_mono_primary_unexpected_view_count_ = true;
+            logger_.Info("MonoVR primary: application requested up to " +
+                         std::to_string(view_capacity_input) +
+                         " views; the single-view contract limits it to 1.");
+        }
+    }
+    if (!views || !view_count_output) {
         return result;
     }
 
@@ -7370,7 +7486,7 @@ XrResult OpenXrLayer::LocateViews(XrSession session,
         return result;
     }
     if (!resolved_settings_.pivotxr.enabled && !resolved_settings_.depthxr.enabled &&
-        !IsQuadViewsActive()) {
+        !IsQuadViewsActive() && !resolved_settings_.mono_vr.enabled) {
         return result;
     }
 
@@ -7788,6 +7904,59 @@ XrResult OpenXrLayer::LocateViews(XrSession session,
                                      depth_native_views,
                                      adjusted_views);
     }
+
+    // ── Mono VR (soft mono) ─────────────────────────────────────────────
+    // Mirrors the first view onto every other view, collapsing stereo to a
+    // flat monoscopic image. Runs after all per-eye pose/FOV adjustments so
+    // the mirrored views stay strictly identical.
+    if (resolved_settings_.mono_vr.enabled && views && count > 1) {
+        // Toggle binding poll (same pattern as HeadCursor)
+        const auto now = std::chrono::steady_clock::now();
+        const bool mv_first_poll = !mono_vr_binding_last_poll_time_.has_value();
+        if (mv_first_poll || now - *mono_vr_binding_last_poll_time_ >= kInputBindingPollInterval) {
+            mono_vr_binding_last_poll_time_ = now;
+            const auto& binding = resolved_settings_.mono_vr.toggle_binding;
+            if (binding.type != InputBindingType::None) {
+                mono_vr_binding_down_cached_ = PollInputBindingDown(binding);
+            }
+        }
+        const bool binding_down = mono_vr_binding_down_cached_;
+        if (mv_first_poll) {
+            mono_vr_toggle_binding_was_down_ = binding_down;
+        }
+        const bool was_pressed_this_call = binding_down && !mono_vr_toggle_binding_was_down_;
+        mono_vr_toggle_binding_was_down_ = binding_down;
+
+        if (was_pressed_this_call) {
+            // Toggle: flip the enabled state on each press
+            mono_vr_toggle_enabled_ = !mono_vr_toggle_enabled_;
+            logger_.Info(std::string("Mono VR ") + (mono_vr_toggle_enabled_ ? "enabled" : "disabled") + " via " +
+                         BindingLabel(resolved_settings_.mono_vr.toggle_binding) + ".");
+            SoundPlayer::Instance().PlayTransition(resolved_settings_.mono_vr.toggle_binding.sound,
+                                                   mono_vr_toggle_enabled_,
+                                                   dll_directory_,
+                                                   resolved_settings_.core.sound_volume,
+                                                   L"mono-on.wav", L"mono-off.wav");
+        }
+
+        if (mono_vr_toggle_enabled_) {
+            static bool mono_logged = false;
+            if (!mono_logged) {
+                mono_logged = true;
+                logger_.Info("MonoVR ENABLED: mirroring first view onto " + std::to_string(count) +
+                             " views (soft mono, no GPU savings).");
+            }
+            for (uint32_t i = 1; i < count; ++i) {
+                adjusted_views[i] = adjusted_views[0];
+            }
+        }
+    } else if (!resolved_settings_.mono_vr.enabled) {
+        // Reset toggle state when disabled
+        mono_vr_binding_down_cached_ = false;
+        mono_vr_toggle_binding_was_down_ = false;
+        mono_vr_binding_last_poll_time_.reset();
+    }
+    // ── End mono VR ─────────────────────────────────────────────────────
 
     for (uint32_t i = 0; i < count; ++i) {
         views[i].pose.position.x = static_cast<float>(adjusted_views[i].position.x);
@@ -8272,6 +8441,11 @@ void OpenXrLayer::RefreshResolvedSettings() {
     head_cursor_toggle_binding_was_down_ = false;
     head_cursor_binding_last_poll_time_.reset();
 
+    mono_vr_toggle_enabled_ = !resolved_settings_.mono_vr.inverted_toggle;
+    mono_vr_binding_down_cached_ = false;
+    mono_vr_toggle_binding_was_down_ = false;
+    mono_vr_binding_last_poll_time_.reset();
+
     const bool configured_core_active = resolved_settings_.core.enabled;
     const bool configured_quadviews_active =
         configured_core_active && resolved_settings_.quadviews.enabled;
@@ -8624,6 +8798,7 @@ void OpenXrLayer::ResetSessionState() {
     ResetD3D11QuadViewsCompositor();
     active_session_ = XR_NULL_HANDLE;
     quadviews_session_active_.reset();
+    mono_primary_session_active_.reset();
     deferred_quadviews_config_active_.reset();
     session_begin_wall_time_.reset();
     pending_end_frame_diagnostics_ = 0;
@@ -8734,6 +8909,15 @@ bool OpenXrLayer::IsQuadViewsActive() const {
 bool OpenXrLayer::IsQuadViewsEmulationActive() const {
     return IsQuadViewsActive() && !varjo_compatible_quadviews_active_ &&
            d3d11_graphics_extension_requested_;
+}
+
+bool OpenXrLayer::IsMonoPrimaryActive() const {
+    const bool configured_active = resolved_settings_.core.enabled &&
+                                   resolved_settings_.mono_vr.enabled &&
+                                   resolved_settings_.mono_vr.mode == MonoVrMode::Primary;
+    // Same latching discipline as quadviews: the single-view contract is
+    // fixed at session creation and survives config reloads until teardown.
+    return mono_primary_session_active_.value_or(configured_active);
 }
 
 bool OpenXrLayer::IsVarjoCompatibleQuadviewsEligible() {

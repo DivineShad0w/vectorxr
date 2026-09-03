@@ -752,6 +752,62 @@ fn default_head_cursor_toggle_binding() -> InputBinding {
     InputBinding::None
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MonoVrSettings {
+    #[serde(default)]
+    enabled: bool,
+    #[serde(default = "default_mono_vr_toggle_binding")]
+    toggle_binding: InputBinding,
+    #[serde(default)]
+    inverted_toggle: bool,
+    #[serde(default = "default_mono_vr_mode")]
+    mode: String,
+}
+
+fn default_mono_vr_toggle_binding() -> InputBinding {
+    InputBinding::None
+}
+
+fn default_mono_vr_mode() -> String {
+    "soft".to_string()
+}
+
+impl Default for MonoVrSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            toggle_binding: default_mono_vr_toggle_binding(),
+            inverted_toggle: false,
+            mode: default_mono_vr_mode(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MonoVrProfileConfig {
+    #[serde(default)]
+    name: String,
+    #[serde(default = "default_true")]
+    enabled: bool,
+    #[serde(default)]
+    application_ids: Vec<String>,
+    #[serde(default)]
+    settings: MonoVrSettings,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct MonoVrModuleConfig {
+    #[serde(default)]
+    enabled: bool,
+    #[serde(default)]
+    defaults: MonoVrSettings,
+    #[serde(default)]
+    profiles: Vec<MonoVrProfileConfig>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 struct VectorXRModules {
@@ -765,6 +821,10 @@ struct VectorXRModules {
     turbo: TurboModuleConfig,
     #[serde(default)]
     head_cursor: HeadCursorModuleConfig,
+    // Canonical key is "monoVR" (C++ layer and TS model use it); the camelCase
+    // default "monoVr" was written by earlier builds, so accept it as an alias.
+    #[serde(default, rename = "monoVR", alias = "monoVr")]
+    mono_vr: MonoVrModuleConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2489,6 +2549,122 @@ mod tests {
         let serialized = serde_json::to_value(bindings).expect("Depth bindings should serialize");
         assert_eq!(serialized["toggleAnchor"]["type"], "keyboard");
         assert_eq!(serialized["toggleAnchor"]["chord"][0], "F9");
+    }
+
+    #[test]
+    fn mono_vr_module_serializes_under_the_canonical_mono_vr_key() {
+        let config = default_config();
+        let serialized = serde_json::to_value(config).expect("Config should serialize");
+        assert!(
+            serialized["modules"].get("monoVR").is_some(),
+            "modules should use the canonical monoVR key, got: {:?}",
+            serialized["modules"].as_object().map(|modules| modules.keys().cloned().collect::<Vec<_>>())
+        );
+    }
+
+    #[test]
+    fn mono_vr_settings_survive_the_save_round_trip() {
+        use super::VectorXRConfig;
+
+        // The app saves the normalized config: monoVR values must come back,
+        // not be silently dropped by an unknown-key mismatch.
+        let incoming = serde_json::json!({
+            "version": 3,
+            "modules": {
+                "depthxr": {
+                    "enabled": false,
+                    "defaults": { "stereoBoost": 1.0, "convergence": 0.0, "depthAnchor": true },
+                    "bindings": { "toggleEnabled": { "type": "none" }, "toggleAnchor": { "type": "none" } },
+                    "profiles": []
+                },
+                "pivotxr": { "enabled": true },
+                "monoVR": {
+                    "enabled": true,
+                    "defaults": {
+                        "enabled": true,
+                        "toggleBinding": { "type": "keyboard", "chord": ["M"] },
+                        "invertedToggle": true
+                    },
+                    "profiles": [{
+                        "name": "MSFS",
+                        "enabled": true,
+                        "applicationIds": ["flightsimulator2024"],
+                        "settings": {
+                            "enabled": true,
+                            "toggleBinding": { "type": "keyboard", "chord": ["N"] },
+                            "invertedToggle": false
+                        }
+                    }]
+                }
+            }
+        });
+
+        let config: VectorXRConfig =
+            serde_json::from_value(incoming).expect("Config with monoVR should deserialize");
+        assert!(config.modules.mono_vr.enabled);
+        assert!(config.modules.mono_vr.defaults.inverted_toggle);
+        assert_eq!(config.modules.mono_vr.profiles.len(), 1);
+        let profile_binding = serde_json::to_value(config.modules.mono_vr.profiles[0].settings.toggle_binding.clone())
+            .expect("Toggle binding should serialize");
+        assert_eq!(profile_binding["type"], "keyboard");
+        assert_eq!(profile_binding["chord"][0], "N");
+
+        let reserialized = serde_json::to_value(&config).expect("Config should re-serialize");
+        assert_eq!(reserialized["modules"]["monoVR"]["enabled"], true);
+        assert_eq!(
+            reserialized["modules"]["monoVR"]["defaults"]["invertedToggle"],
+            true
+        );
+        assert_eq!(
+            reserialized["modules"]["monoVR"]["profiles"][0]["settings"]["toggleBinding"]["chord"][0],
+            "N"
+        );
+    }
+
+    #[test]
+    fn legacy_mono_vr_key_is_still_read() {
+        use super::VectorXRConfig;
+
+        // Older app builds wrote the camelCase "monoVr" key.
+        let incoming = serde_json::json!({
+            "version": 3,
+            "modules": {
+                "depthxr": {
+                    "enabled": false,
+                    "defaults": { "stereoBoost": 1.0, "convergence": 0.0, "depthAnchor": true },
+                    "bindings": { "toggleEnabled": { "type": "none" }, "toggleAnchor": { "type": "none" } },
+                    "profiles": []
+                },
+                "pivotxr": { "enabled": true },
+                "monoVr": {
+                    "enabled": true,
+                    "defaults": { "enabled": true, "invertedToggle": false }
+                }
+            }
+        });
+
+        let config: VectorXRConfig =
+            serde_json::from_value(incoming).expect("Legacy monoVr key should deserialize");
+        assert!(config.modules.mono_vr.enabled);
+        assert!(config.modules.mono_vr.defaults.enabled);
+    }
+
+    #[test]
+    fn mono_vr_mode_round_trips_and_defaults_to_soft() {
+        use super::VectorXRConfig;
+
+        let config = default_config();
+        // Absent in old configs: defaults to soft, never breaks parsing.
+        assert_eq!(config.modules.mono_vr.defaults.mode, "soft");
+
+        let mut primary = default_config();
+        primary.modules.mono_vr.defaults.mode = "primary".to_string();
+        let serialized = serde_json::to_value(&primary).expect("Config should serialize");
+        assert_eq!(serialized["modules"]["monoVR"]["defaults"]["mode"], "primary");
+
+        let back: VectorXRConfig =
+            serde_json::from_value(serialized).expect("Config should deserialize");
+        assert_eq!(back.modules.mono_vr.defaults.mode, "primary");
     }
 }
 

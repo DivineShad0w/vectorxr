@@ -18,6 +18,7 @@ import PivotXrTab from './components/tabs/PivotXrTab.vue'
 import QuadViewsTab from './components/tabs/QuadViewsTab.vue'
 import TurboTab from './components/tabs/TurboTab.vue'
 import HeadCursorTab from './components/tabs/HeadCursorTab.vue'
+import MonoVrTab from './components/tabs/MonoVrTab.vue'
 import { exportConfigFile, loadLogSnapshot, loadOpenXrLayers, type LogSnapshot, type OpenXrLayerSnapshot } from './lib/commands'
 import { createDebugPackage, saveDebugPackage } from './lib/debugPackage'
 import { buildHealthSummary } from './lib/health'
@@ -137,6 +138,13 @@ const tabs = computed(() => [
     subtitle: 'Control mouse cursor with head movements',
     status: enhancementActive('headCursor') ? 'Active' : 'Inactive',
     enhancementActive: enhancementActive('headCursor'),
+  },
+  {
+    id: 'monoVR' as const,
+    label: 'Mono VR',
+    subtitle: 'Collapse stereo into a flat monoscopic image',
+    status: enhancementActive('monoVR') ? 'Active' : 'Inactive',
+    enhancementActive: enhancementActive('monoVR'),
   },
   {
     id: 'pivotxr' as const,
@@ -478,6 +486,14 @@ async function confirmResetConfig() {
           @add-profile="store.addHeadCursorProfile"
           @remove-profile="store.removeHeadCursorProfile"
           @sync-profile-name="store.syncHeadCursorProfileName"
+        />
+        <MonoVrTab
+          v-else-if="store.state.activeTab === 'monoVR'"
+          :config="store.state.config.modules.monoVR!"
+          :applications="store.state.config.applications"
+          @add-profile="store.addMonoVrProfile"
+          @remove-profile="store.removeMonoVrProfile"
+          @sync-profile-name="store.syncMonoVrProfileName"
         />
         <PivotXrTab
           v-else-if="store.state.activeTab === 'pivotxr'"

@@ -1300,6 +1300,142 @@ bool ParseHeadCursorModule(const JsonValue::Object& object, HeadCursorModuleConf
     return true;
 }
 
+bool ParseMonoVrSettings(const JsonValue::Object& object, MonoVrSettings& out, std::string& error) {
+    out = MonoVrSettings{};
+
+    static const std::unordered_set<std::string> allowed_keys = {
+        "enabled", "toggleBinding", "invertedToggle", "mode"
+    };
+    if (!CheckAllowedKeys(object, allowed_keys, error)) {
+        return false;
+    }
+
+    for (const auto& [key, value] : object) {
+        if (key == "enabled") {
+            if (!value.IsBool()) {
+                error = "monoVR.enabled must be a boolean";
+                return false;
+            }
+            out.enabled = value.AsBool();
+        } else if (key == "toggleBinding") {
+            if (!value.IsObject()) {
+                error = "monoVR.toggleBinding must be an object";
+                return false;
+            }
+            if (!ParseInputBinding(value, out.toggle_binding, error)) {
+                return false;
+            }
+        } else if (key == "invertedToggle") {
+            if (!value.IsBool()) {
+                error = "monoVR.invertedToggle must be a boolean";
+                return false;
+            }
+            out.inverted_toggle = value.AsBool();
+        } else if (key == "mode") {
+            if (!value.IsString()) {
+                error = "monoVR.mode must be a string";
+                return false;
+            }
+            const auto mode = ParseMonoVrMode(value.AsString());
+            if (!mode) {
+                error = "monoVR.mode must be \"soft\" or \"primary\"";
+                return false;
+            }
+            out.mode = *mode;
+        }
+    }
+
+    return true;
+}
+
+bool ParseMonoVrProfile(const JsonValue::Object& object, MonoVrProfile& out, std::string& error) {
+    out = MonoVrProfile{};
+
+    static const std::unordered_set<std::string> allowed_keys = {
+        "name", "enabled", "applicationIds", "settings"
+    };
+    if (!CheckAllowedKeys(object, allowed_keys, error)) {
+        return false;
+    }
+
+    for (const auto& [key, value] : object) {
+        if (key == "name") {
+            if (!value.IsString()) {
+                error = "monoVR profile name must be a string";
+                return false;
+            }
+            out.name = value.AsString();
+        } else if (key == "enabled") {
+            if (!value.IsBool()) {
+                error = "monoVR profile enabled must be a boolean";
+                return false;
+            }
+            out.enabled = value.AsBool();
+        } else if (key == "applicationIds") {
+            if (!ParseStringArray(value, "monoVR profile applicationIds", out.application_ids, error)) {
+                return false;
+            }
+        } else if (key == "settings") {
+            if (!value.IsObject()) {
+                error = "monoVR profile settings must be an object";
+                return false;
+            }
+            if (!ParseMonoVrSettings(value.AsObject(), out.settings, error)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool ParseMonoVrModule(const JsonValue::Object& object, MonoVrModuleConfig& out, std::string& error) {
+    out = MonoVrModuleConfig{};
+
+    static const std::unordered_set<std::string> allowed_keys = {
+        "enabled", "defaults", "profiles"
+    };
+    if (!CheckAllowedKeys(object, allowed_keys, error)) {
+        return false;
+    }
+
+    for (const auto& [key, value] : object) {
+        if (key == "enabled") {
+            if (!value.IsBool()) {
+                error = "modules.monoVR.enabled must be a boolean";
+                return false;
+            }
+            out.enabled = value.AsBool();
+        } else if (key == "defaults") {
+            if (!value.IsObject()) {
+                error = "modules.monoVR.defaults must be an object";
+                return false;
+            }
+            if (!ParseMonoVrSettings(value.AsObject(), out.defaults, error)) {
+                return false;
+            }
+        } else if (key == "profiles") {
+            if (!value.IsArray()) {
+                error = "modules.monoVR.profiles must be an array";
+                return false;
+            }
+            for (const auto& profile_val : value.AsArray()) {
+                if (!profile_val.IsObject()) {
+                    error = "modules.monoVR.profiles items must be objects";
+                    return false;
+                }
+                MonoVrProfile profile;
+                if (!ParseMonoVrProfile(profile_val.AsObject(), profile, error)) {
+                    return false;
+                }
+                out.profiles.push_back(std::move(profile));
+            }
+        }
+    }
+
+    return true;
+}
+
 bool ParseTurboModule(const JsonValue::Object& object, TurboModuleConfig& out, std::string& error) {
     static const std::unordered_set<std::string> allowed = {
         "enabled",
@@ -2295,7 +2431,7 @@ bool ParseVectorDocument(const JsonValue::Object& root_object, ConfigDocument& o
         return false;
     }
 
-    static const std::unordered_set<std::string> allowed_modules = {"depthxr", "pivotxr", "quadviews", "turbo", "headCursor"};
+    static const std::unordered_set<std::string> allowed_modules = {"depthxr", "pivotxr", "quadviews", "turbo", "headCursor", "monoVR", "monoVr"};
     if (!CheckAllowedKeys(*modules_object, allowed_modules, error)) {
         return false;
     }
@@ -2342,6 +2478,19 @@ bool ParseVectorDocument(const JsonValue::Object& root_object, ConfigDocument& o
     if (head_cursor_it != modules_object->end()) {
         const JsonValue::Object* head_cursor_object = RequireObject(head_cursor_it->second, "modules.headCursor", error);
         if (!head_cursor_object || !ParseHeadCursorModule(*head_cursor_object, out.head_cursor, error)) {
+            error.clear(); // Do not abort the entire config.
+        }
+    }
+
+    // Optional: monoscopic stereo collapse. Older app builds wrote the
+    // camelCase "monoVr" key; accept both.
+    auto mono_vr_it = modules_object->find("monoVR");
+    if (mono_vr_it == modules_object->end()) {
+        mono_vr_it = modules_object->find("monoVr");
+    }
+    if (mono_vr_it != modules_object->end()) {
+        const JsonValue::Object* mono_vr_object = RequireObject(mono_vr_it->second, "modules.monoVR", error);
+        if (!mono_vr_object || !ParseMonoVrModule(*mono_vr_object, out.mono_vr, error)) {
             error.clear(); // Do not abort the entire config.
         }
     }

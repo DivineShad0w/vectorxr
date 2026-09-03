@@ -455,6 +455,7 @@ class OpenXrLayer {
     void NoteTurboShouldRenderLocked(bool should_render);
     bool IsQuadViewsActive() const;
     bool IsQuadViewsEmulationActive() const;
+    bool IsMonoPrimaryActive() const;
     void ResetSwapchainState();
     void LogSwapchainSummary(XrSwapchain swapchain, const SwapchainInfo& info, std::string_view event_name);
     bool ShouldDeferSwapchainRelease(const SwapchainInfo& info) const;
@@ -803,6 +804,12 @@ class OpenXrLayer {
     std::optional<std::chrono::steady_clock::time_point> head_cursor_binding_last_poll_time_;
     // SendInput function pointer (loaded lazily).
     PFN_xrVoidFunction head_cursor_send_input_{nullptr};
+
+    // Mono VR (soft mono): mirrors the first view onto the others in LocateViews.
+    bool mono_vr_toggle_enabled_{true};
+    bool mono_vr_toggle_binding_was_down_{false};
+    bool mono_vr_binding_down_cached_{false};
+    std::optional<std::chrono::steady_clock::time_point> mono_vr_binding_last_poll_time_;
     bool depthxr_toggle_enabled_{true};
     bool depthxr_toggle_binding_was_down_{false};
     std::optional<std::chrono::steady_clock::time_point> pivotxr_binding_last_poll_time_;
@@ -1090,6 +1097,15 @@ class OpenXrLayer {
     // reload cannot remove the compositor from underneath a running title.
     std::optional<bool> quadviews_session_active_;
     std::optional<bool> deferred_quadviews_config_active_;
+    // Primary mono also changes the application's view/swapchain topology
+    // (one view, arraySize 1). Latch the decision at session creation the
+    // same way quadviews does: the swapchain contract is fixed for the life
+    // of the session, so a config reload cannot reshape it underneath a
+    // running title.
+    std::optional<bool> mono_primary_session_active_;
+    bool has_logged_mono_primary_view_contract_{false};
+    bool has_logged_mono_primary_frame_duplicated_{false};
+    bool has_logged_mono_primary_unexpected_view_count_{false};
     XrSession active_session_{XR_NULL_HANDLE};
     XrSpace internal_local_space_{XR_NULL_HANDLE};
     XrSpace internal_view_space_{XR_NULL_HANDLE};

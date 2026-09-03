@@ -45,6 +45,17 @@ enum class QuadViewsTrackingMode {
     Eye,
 };
 
+// Mono VR modes. Soft mirrors the first view onto the others at LocateViews
+// time: the application still renders every viewport, so it trades parallax
+// for comfort but not for GPU savings. Primary collapses the whole session
+// to a single view: the application renders one viewport and the layer
+// duplicates the frame for the compositor — real GPU savings. Primary is a
+// session contract (the swapchain topology is fixed at session start).
+enum class MonoVrMode {
+    Soft,
+    Primary,
+};
+
 // Custom profiles override the defaults for their applications. The legacy
 // Disable value is still parsed for older configs but no longer has runtime
 // behavior; a profile's enabled flag controls whether it participates.
@@ -441,6 +452,34 @@ struct HeadCursorModuleConfig {
 struct HeadCursorResolvedSettings : HeadCursorSettings {
 };
 
+// Mono VR (phase 1, "soft mono"): mirrors the first view onto every other
+// view in xrLocateViews, collapsing stereo to a flat monoscopic image. The
+// application still renders one viewport per view, so this trades parallax
+// for comfort, not for GPU savings.
+struct MonoVrSettings {
+    bool enabled{false};
+    InputBinding toggle_binding;
+    bool inverted_toggle{false};
+    MonoVrMode mode{MonoVrMode::Soft};
+};
+
+struct MonoVrProfile {
+    std::string name;
+    std::vector<std::string> application_ids;
+    bool enabled{true};
+    ProfileMode mode{ProfileMode::Custom};
+    MonoVrSettings settings;
+};
+
+struct MonoVrModuleConfig {
+    bool enabled{false};
+    MonoVrSettings defaults;
+    std::vector<MonoVrProfile> profiles;
+};
+
+struct MonoVrResolvedSettings : MonoVrSettings {
+};
+
 struct ConfigDocument {
     int version{3};
     CoreSettings core;
@@ -450,6 +489,7 @@ struct ConfigDocument {
     QuadViewsModuleConfig quadviews;
     TurboModuleConfig turbo;
     HeadCursorModuleConfig head_cursor;
+    MonoVrModuleConfig mono_vr;
 };
 
 struct ResolvedRuntimeConfig {
@@ -460,6 +500,7 @@ struct ResolvedRuntimeConfig {
     QuadViewsResolvedSettings quadviews;
     TurboResolvedSettings turbo;
     HeadCursorResolvedSettings head_cursor;
+    MonoVrResolvedSettings mono_vr;
 };
 
 const char* ToString(LogLevel level);
@@ -479,6 +520,8 @@ const char* ToString(InputBindingType type);
 std::optional<InputBindingType> ParseInputBindingType(const std::string& value);
 const char* ToString(QuadViewsTrackingMode mode);
 std::optional<QuadViewsTrackingMode> ParseQuadViewsTrackingMode(const std::string& value);
+const char* ToString(MonoVrMode mode);
+std::optional<MonoVrMode> ParseMonoVrMode(const std::string& value);
 const char* ToString(ProfileMode mode);
 std::optional<ProfileMode> ParseProfileMode(const std::string& value);
 const char* ToString(PivotResponseMode mode);

@@ -367,6 +367,37 @@ HeadCursorResolvedSettings ResolveHeadCursorSettings(const ConfigDocument& confi
     return resolved;
 }
 
+MonoVrResolvedSettings ResolveMonoVrSettings(const ConfigDocument& config, std::string_view exe_name) {
+    MonoVrResolvedSettings resolved;
+
+    const auto& mv = config.mono_vr;
+    resolved.enabled = mv.enabled;
+    resolved.toggle_binding = mv.defaults.toggle_binding;
+    resolved.inverted_toggle = mv.defaults.inverted_toggle;
+    resolved.mode = mv.defaults.mode;
+
+    // Match a custom profile for this application
+    const RegisteredApplication* application = FindMatchingApplication(config, exe_name);
+    if (!application) {
+        return resolved;
+    }
+
+    for (const auto& profile : mv.profiles) {
+        if (!profile.enabled) {
+            continue;
+        }
+        if (std::find(profile.application_ids.begin(), profile.application_ids.end(), application->id) != profile.application_ids.end()) {
+            resolved.enabled = profile.enabled;
+            resolved.toggle_binding = profile.settings.toggle_binding;
+            resolved.inverted_toggle = profile.settings.inverted_toggle;
+            resolved.mode = profile.settings.mode;
+            return resolved;
+        }
+    }
+
+    return resolved;
+}
+
 ResolvedRuntimeConfig ResolveRuntimeConfig(const ConfigDocument& config, std::string_view exe_name) {
     ResolvedRuntimeConfig resolved;
     resolved.core = config.core;
@@ -376,6 +407,7 @@ ResolvedRuntimeConfig ResolveRuntimeConfig(const ConfigDocument& config, std::st
     resolved.quadviews = ResolveQuadViewsSettings(config, exe_name);
     resolved.turbo = ResolveTurboSettings(config, exe_name);
     resolved.head_cursor = ResolveHeadCursorSettings(config, exe_name);
+    resolved.mono_vr = ResolveMonoVrSettings(config, exe_name);
     return resolved;
 }
 
